@@ -1,7 +1,8 @@
 {
-  "name": "",
+  "name": "kc-commerce",
   "version": "1.0.0",
-  "description": "Website template for Payload",
+  "description": "KC Trading — Bulgarian e-commerce store",
+
   "license": "MIT",
   "type": "module",
   "scripts": {
