@@ -28,6 +28,7 @@ const eslintConfig = [
           caughtErrorsIgnorePattern: '^(_|ignore)',
         },
       ],
+      'no-console': 'warn', // Prevent debug logs in production
     },
   },
   {

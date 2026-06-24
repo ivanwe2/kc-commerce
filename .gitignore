@@ -13,10 +13,14 @@ public/media/
 public/robots.txt
 public/sitemap*.xml
 
+# Coverage
+coverage/
 
 # Playwright
-node_modules/
 /test-results/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# Docker volumes (do not commit)
+pgdata/
