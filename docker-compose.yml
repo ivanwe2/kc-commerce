@@ -1,31 +1,20 @@
-version: '3'
-
 services:
-  payload:
-    image: node:18-alpine
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
     ports:
-      - '3000:3000'
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: kctrading
+      POSTGRES_PASSWORD: kctrading_dev
+      POSTGRES_DB: kctrading
     volumes:
-      - .:/home/node/app
-      - node_modules:/home/node/app/node_modules
-    working_dir: /home/node/app/
-    command: sh -c "yarn install && yarn dev"
-    depends_on:
-      - mongo
-    env_file:
-      - .env
-
-  mongo:
-    image: mongo:latest
-    ports:
-      - '27017:27017'
-    command:
-      - --storageEngine=wiredTiger
-    volumes:
-      - data:/data/db
-    logging:
-      driver: none
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kctrading"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
 volumes:
-  data:
-  node_modules:
+  pgdata:
