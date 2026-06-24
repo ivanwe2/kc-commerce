@@ -1,5 +1,6 @@
-import PageTemplate, { generateMetadata } from './[slug]/page'
+// TODO: Replace with e-commerce homepage in Phase 2
+import { notFound } from 'next/navigation'
 
-export default PageTemplate
-
-export { generateMetadata }
+export default function HomePage() {
+  notFound()
+}

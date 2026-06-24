@@ -1,4 +1,4 @@
 // TODO: Remove in Phase 2
 import React from 'react'
 
-export const CodeBlock: React.FC = () => null
+export const FormMessageBlock: React.FC = () => null

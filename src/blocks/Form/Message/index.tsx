@@ -1,13 +1,4 @@
-import RichText from '@/components/RichText'
+// TODO: Remove in Phase 2
 import React from 'react'
 
-import { Width } from '../Width'
-import { DefaultTypedEditorState } from '@payloadcms/richtext-lexical'
-
-export const Message: React.FC<{ message: DefaultTypedEditorState }> = ({ message }) => {
-  return (
-    <Width className="my-12" width="100">
-      {message && <RichText data={message} />}
-    </Width>
-  )
-}
+export const Message: React.FC = () => null

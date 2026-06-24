@@ -1,25 +1,9 @@
+// TODO: Replace with e-commerce hero rendering in Phase 2
 import React from 'react'
+import { HighImpactHero } from './HighImpact'
+import { MediumImpactHero } from './MediumImpact'
+import { LowImpactHero } from './LowImpact'
 
-import type { Page } from '@/payload-types'
-
-import { HighImpactHero } from '@/heros/HighImpact'
-import { LowImpactHero } from '@/heros/LowImpact'
-import { MediumImpactHero } from '@/heros/MediumImpact'
-
-const heroes = {
-  highImpact: HighImpactHero,
-  lowImpact: LowImpactHero,
-  mediumImpact: MediumImpactHero,
-}
-
-export const RenderHero: React.FC<Page['hero']> = (props) => {
-  const { type } = props || {}
-
-  if (!type || type === 'none') return null
-
-  const HeroToRender = heroes[type]
-
-  if (!HeroToRender) return null
-
-  return <HeroToRender {...props} />
+export const RenderHero: React.FC = () => {
+  return <HighImpactHero />
 }

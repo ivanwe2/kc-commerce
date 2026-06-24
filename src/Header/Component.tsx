@@ -1,9 +1,10 @@
-import { HeaderClient } from './Component.client'
-import { getCachedGlobal } from '@/utilities/getGlobals'
+// TODO: Replace with e-commerce header in Phase 2
 import React from 'react'
 
-export async function Header() {
-  const headerData = await getCachedGlobal('header', 1)()
+export const Header: React.FC = () => {
+  return <header className="header">KC Trading Header (stub)</header>
+}
 
-  return <HeaderClient data={headerData} />
+export const HeaderRegion: React.FC = () => {
+  return <Header />
 }
