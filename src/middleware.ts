@@ -1,4 +1,6 @@
+import createMiddleware from 'next-intl/middleware'
 import { NextRequest, NextResponse } from 'next/server'
+import { routing } from '@/i18n/routing'
 
 // Security headers applied to all non-admin responses
 const securityHeaders: Record<string, string> = {
@@ -13,15 +15,29 @@ const securityHeaders: Record<string, string> = {
 const storefrontCSP =
   "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'none';"
 
+const intlMiddleware = createMiddleware(routing)
+
 export function middleware(request: NextRequest) {
+  // Skip security headers for Payload admin/API routes — let intlMiddleware handle routing first
+  const isAdminRoute =
+    request.nextUrl.pathname.startsWith('/admin') ||
+    request.nextUrl.pathname.startsWith('/api')
+
+  // Run locale detection / routing first
+  const intlResponse = intlMiddleware(request)
+
+  // If intlMiddleware redirected, return early
+  if (intlResponse.status !== 200) {
+    return intlResponse
+  }
+
+  // Apply security headers to the response
   const response = NextResponse.next()
 
-  // Apply all security headers
   Object.entries(securityHeaders).forEach(([key, value]) => {
     response.headers.set(key, value)
   })
 
-  // Apply Strict-Transport-Security (only in production / HTTPS contexts)
   if (process.env.NODE_ENV === 'production') {
     response.headers.set(
       'Strict-Transport-Security',
@@ -29,26 +45,28 @@ export function middleware(request: NextRequest) {
     )
   }
 
-  // Apply CSP — use relaxed CSP for admin routes (Payload needs inline scripts)
-  const isAdminRoute = request.nextUrl.pathname.startsWith('/admin')
   if (!isAdminRoute) {
     response.headers.set('Content-Security-Policy', storefrontCSP)
+  }
+
+  // Copy locale cookie from intlMiddleware
+  if (intlResponse.cookies) {
+    intlResponse.cookies.getAll().forEach((cookie) => {
+      response.cookies.set(cookie)
+    })
+  }
+
+  // Apply the locale header from intlMiddleware
+  const localeHeader = intlResponse.headers.get('x-middleware-locale')
+  if (localeHeader) {
+    response.headers.set('x-middleware-locale', localeHeader)
   }
 
   return response
 }
 
 export const config = {
-  // Run on all routes except API routes, static assets, and Payload internals
   matcher: [
-    /*
-     * Match all request paths except:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - .png, .svg, etc. (static assets)
-     */
     '/((?!api|_next/static|_next/image|favicon.ico|\.png|\.jpg|\.jpeg|\.gif|\.svg|\.webp|\.ico).*)',
   ],
 }

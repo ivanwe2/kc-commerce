@@ -38,6 +38,14 @@ export default buildConfig({
   collections: [Products, Categories, Orders, Pages, Media, Users],
   cors: [getServerSideURL()].filter(Boolean),
   globals: [Settings],
+  localization: {
+    locales: [
+      { label: 'Bulgarian', code: 'bg' },
+      { label: 'English', code: 'en' },
+    ],
+    defaultLocale: 'bg',
+    fallback: true,
+  },
   plugins,
   secret: process.env.PAYLOAD_SECRET,
   sharp,
