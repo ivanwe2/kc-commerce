@@ -25,7 +25,8 @@
     "bundle:check": "opennextjs-cloudflare build && node -e \"const{statSync}=require('fs');const b=statSync('.open-next/worker.js').size;console.log('worker.js',(b/1048576).toFixed(2)+'MB (uncompressed; limit is 10MB gzipped)')\"",
     "deploy:database": "cross-env NODE_ENV=production PAYLOAD_SECRET=ignore payload migrate",
     "deploy:app": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
-    "deploy": "pnpm deploy:database && pnpm deploy:app"
+    "deploy": "pnpm deploy:database && pnpm deploy:app",
+    "seed": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed.ts"
   },
   "dependencies": {
     "@opennextjs/cloudflare": "1.20.2",

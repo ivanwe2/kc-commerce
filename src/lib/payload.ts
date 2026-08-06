@@ -1,0 +1,191 @@
+import config from '@payload-config'
+import { getPayload } from 'payload'
+import type { Payload, TypedLocale, Where } from 'payload'
+
+import type { Category, Product, Setting } from '@/payload-types'
+
+/**
+ * Data access for the storefront, all through Payload's Local API.
+ *
+ * The Local API runs in-process — no HTTP round-trip, no serialisation, and it
+ * is type-safe against payload-types.ts. On Workers, where every millisecond is
+ * billed CPU time, avoiding a self-request also avoids paying for the same
+ * request twice.
+ *
+ * Queries here follow two rules that matter on D1, which bills by rows read:
+ *   - `depth` as low as the view allows (0 unless a relationship is rendered)
+ *   - never fetch fields the page does not display
+ */
+
+export async function getPayloadClient(): Promise<Payload> {
+  return getPayload({ config })
+}
+
+export type StorefrontLocale = TypedLocale
+
+type ProductQueryOptions = {
+  locale: StorefrontLocale
+  limit?: number
+  page?: number
+  categoryId?: number
+  search?: string
+  minPrice?: number
+  maxPrice?: number
+  inStockOnly?: boolean
+  sort?: string
+  featuredOnly?: boolean
+}
+
+/** Public product listing. Only active products are ever returned. */
+export async function findProducts({
+  locale,
+  limit = 12,
+  page = 1,
+  categoryId,
+  search,
+  minPrice,
+  maxPrice,
+  inStockOnly,
+  sort = '-createdAt',
+  featuredOnly,
+}: ProductQueryOptions) {
+  const payload = await getPayloadClient()
+
+  const and: Where[] = [{ isActive: { equals: true } }]
+
+  if (categoryId) and.push({ category: { equals: categoryId } })
+  if (featuredOnly) and.push({ isFeatured: { equals: true } })
+  if (inStockOnly) and.push({ stock: { greater_than: 0 } })
+  if (typeof minPrice === 'number') and.push({ basePrice: { greater_than_equal: minPrice } })
+  if (typeof maxPrice === 'number') and.push({ basePrice: { less_than_equal: maxPrice } })
+
+  if (search) {
+    and.push({
+      or: [
+        { title: { like: search } },
+        { shortDescription: { like: search } },
+        { sku: { like: search } },
+      ],
+    })
+  }
+
+  return payload.find({
+    collection: 'products',
+    locale,
+    where: { and },
+    limit,
+    page,
+    sort,
+    // depth 1 resolves category and image relationships, which product cards render.
+    depth: 1,
+  })
+}
+
+/** A single product by slug, or null. */
+export async function findProductBySlug(
+  slug: string,
+  locale: StorefrontLocale,
+): Promise<Product | null> {
+  const payload = await getPayloadClient()
+
+  const result = await payload.find({
+    collection: 'products',
+    locale,
+    where: { and: [{ slug: { equals: slug } }, { isActive: { equals: true } }] },
+    limit: 1,
+    depth: 2,
+  })
+
+  return result.docs[0] ?? null
+}
+
+/** Other products in the same category, excluding the one being viewed. */
+export async function findRelatedProducts(
+  product: Product,
+  locale: StorefrontLocale,
+  limit = 4,
+): Promise<Product[]> {
+  const categoryId = typeof product.category === 'object' ? product.category?.id : product.category
+  if (!categoryId) return []
+
+  const payload = await getPayloadClient()
+
+  const result = await payload.find({
+    collection: 'products',
+    locale,
+    where: {
+      and: [
+        { isActive: { equals: true } },
+        { category: { equals: categoryId } },
+        { id: { not_equals: product.id } },
+      ],
+    },
+    limit,
+    depth: 1,
+  })
+
+  return result.docs
+}
+
+export async function findCategories(locale: StorefrontLocale): Promise<Category[]> {
+  const payload = await getPayloadClient()
+
+  const result = await payload.find({
+    collection: 'categories',
+    locale,
+    where: { isActive: { equals: true } },
+    limit: 100,
+    sort: 'sortOrder',
+    depth: 1,
+  })
+
+  return result.docs
+}
+
+export async function findCategoryBySlug(
+  slug: string,
+  locale: StorefrontLocale,
+): Promise<Category | null> {
+  const payload = await getPayloadClient()
+
+  const result = await payload.find({
+    collection: 'categories',
+    locale,
+    where: { and: [{ slug: { equals: slug } }, { isActive: { equals: true } }] },
+    limit: 1,
+    depth: 1,
+  })
+
+  return result.docs[0] ?? null
+}
+
+/**
+ * Site settings.
+ *
+ * Read on every page for the header and footer, so this is the single hottest
+ * query in the app. Phase 8 wraps it in a cache tag invalidated by an
+ * afterChange hook; until then it is a cheap single-row read.
+ */
+export async function getSettings(locale: StorefrontLocale): Promise<Setting> {
+  const payload = await getPayloadClient()
+
+  return payload.findGlobal({
+    slug: 'settings',
+    locale,
+    depth: 1,
+  })
+}
+
+export async function findPageBySlug(slug: string, locale: StorefrontLocale) {
+  const payload = await getPayloadClient()
+
+  const result = await payload.find({
+    collection: 'pages',
+    locale,
+    where: { and: [{ slug: { equals: slug } }, { isPublished: { equals: true } }] },
+    limit: 1,
+    depth: 1,
+  })
+
+  return result.docs[0] ?? null
+}

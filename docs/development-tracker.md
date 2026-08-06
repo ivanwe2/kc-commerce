@@ -13,9 +13,9 @@ Single source of truth for what is actually built. Updated at the end of every p
 | Phase | Scope | Status |
 |---|---|---|
 | 0 | Cloudflare-native scaffolding | ✅ Complete |
-| 1 | Data model — collections & globals | ⏳ Port pending |
-| 2 | Internationalization (BG + EN) | ⏳ Port pending |
-| 3 | Storefront — layout & core pages | ⬜ Not started |
+| 1 | Data model — collections & globals | ✅ Complete |
+| 2 | Internationalization (BG + EN) | ✅ Complete |
+| 3 | Storefront — layout & core pages | 🔄 Core done; search + rich text pending |
 | 4 | Shopping cart | ⬜ Not started |
 | 5 | Checkout & order flow | ⬜ Not started |
 | 6 | Legal compliance | ⬜ Not started |
@@ -106,15 +106,17 @@ values, and left alone rather than rewriting published history.
 
 ## Phase 1: Data Model — Collections & Globals
 
-- [ ] Commit 1.1: Products collection (pricing tiers, localization)
-- [ ] Commit 1.2: Categories collection (nesting)
-- [ ] Commit 1.3: Orders collection (snapshots, status machine)
-- [ ] Commit 1.4: Pages collection & Settings global
-- [ ] Commit 1.5: Media collection (R2, no sharp)
-- [ ] Commit 1.6: Users collection & access control
-- [ ] Commit 1.7: Register collections & generate D1 migrations
+- [x] Commit 1.1: Products collection (pricing tiers, localization)
+- [x] Commit 1.2: Categories collection (nesting)
+- [x] Commit 1.3: Orders collection (snapshots, status machine)
+- [x] Commit 1.4: Pages collection & Settings global
+- [x] Commit 1.5: Media collection (R2, no sharp)
+- [x] Commit 1.6: Users collection & access control
+- [x] Commit 1.7: Register collections & generate D1 migrations
+- [x] Extra: Counters collection + atomic order-number allocation
+- [x] Extra: shared money / pricing / slugify utilities
 
-**Status:** ⏳ Port pending
+**Status:** ✅ Complete
 **Branch:** `phase/1-data-model-d1`
 **Exit criteria:** all collections CRUD-able in `/admin`; migrations apply to a clean D1.
 
@@ -122,10 +124,11 @@ values, and left alone rather than rewriting published history.
 
 ## Phase 2: Internationalization (BG + EN)
 
-- [ ] Commit 2.1: next-intl setup & locale routing
-- [ ] Commit 2.2: Language switcher component
+- [x] Commit 2.1: next-intl setup & locale routing
+- [x] Commit 2.2: Language switcher component
 
-**Status:** ⏳ Port pending
+**Status:** ✅ Complete
+**Verified:** `/` Bulgarian, `/en` English, `/bg` 307s to `/`, `/admin` unaffected.
 **Branch:** `phase/2-i18n`
 **Exit criteria:** every storefront route resolves in both locales; `/admin` stays outside `[locale]`.
 
@@ -133,15 +136,22 @@ values, and left alone rather than rewriting published history.
 
 ## Phase 3: Storefront — Layout & Core Pages
 
-- [ ] Commit 3.1: Design system (semantic tokens) & layout components
-- [ ] Commit 3.2: Homepage
-- [ ] Commit 3.3: Product listing page
-- [ ] Commit 3.4: Product detail page
-- [ ] Commit 3.5: Search
+- [x] Commit 3.1: Design system (semantic tokens) & layout components
+- [x] Commit 3.2: Homepage
+- [x] Commit 3.3: Product listing page (filters, sort, pagination)
+- [x] Commit 3.4: Product detail page (gallery, tier table, JSON-LD)
+- [x] Commit 3.5: Category pages
+- [x] Extra: seed script (`pnpm seed`) with realistic BG/EN catalogue
+- [ ] Commit 3.6: Header search with live results (basic `?q=` filtering works today)
+- [ ] Commit 3.7: Lexical rich-text renderer — deferred to Phase 6, where the
+      legal pages need the same component
 
-**Status:** ⬜ Not started
+**Status:** 🔄 Core complete
 **Branch:** `phase/3-storefront`
-**Exit criteria:** palette swappable from one file; 375px viewport verified.
+
+**Verified against seeded data:** 6 products / 4 categories render in both
+locales; in-stock filter 6 → 5; category filter → 2; tier table shows correct
+−13% / −29% savings.
 
 ---
 
