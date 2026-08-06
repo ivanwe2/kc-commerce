@@ -8,8 +8,14 @@ import { buildConfig } from 'payload'
 import { getCloudflareContext, type CloudflareContext } from '@opennextjs/cloudflare'
 import type { GetPlatformProxyOptions } from 'wrangler'
 
+import { Categories } from './collections/Categories'
+import { Counters } from './collections/Counters'
 import { Media } from './collections/Media'
+import { Orders } from './collections/Orders'
+import { Pages } from './collections/Pages'
+import { Products } from './collections/Products'
 import { Users } from './collections/Users'
+import { Settings } from './globals/Settings'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -127,7 +133,26 @@ export default buildConfig({
     },
   },
 
-  collections: [Users, Media],
+  collections: [Products, Categories, Orders, Pages, Media, Users, Counters],
+
+  globals: [Settings],
+
+  /**
+   * Payload localizes CONTENT fields (product titles, descriptions). next-intl
+   * handles UI strings and routing in Phase 2 — two different concerns that are
+   * easy to conflate.
+   *
+   * `fallback: true` means a missing English translation renders the Bulgarian
+   * value rather than an empty product page.
+   */
+  localization: {
+    locales: [
+      { label: 'Български', code: 'bg' },
+      { label: 'English', code: 'en' },
+    ],
+    defaultLocale: 'bg',
+    fallback: true,
+  },
 
   // D1 is a binding, not a connection string. There is no credential here by design.
   db: sqliteD1Adapter({ binding: cloudflare.env.D1 }),
