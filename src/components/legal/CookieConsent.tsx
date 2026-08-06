@@ -1,7 +1,7 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { useEffect, useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 
 import { Button } from '@/components/ui/Button'
 import { Link } from '@/i18n/routing'
@@ -16,16 +16,29 @@ type Consent = {
   timestamp: string
 }
 
-function readConsent(): Consent | null {
+function readConsentRaw(): string | null {
   const match = document.cookie.split('; ').find((row) => row.startsWith(`${CONSENT_COOKIE}=`))
-  if (!match) return null
+  return match ?? null
+}
 
-  try {
-    return JSON.parse(decodeURIComponent(match.split('=').slice(1).join('=')))
-  } catch {
-    // A malformed cookie means asking again, not crashing.
-    return null
-  }
+/**
+ * Whether a decision has already been recorded.
+ *
+ * `useSyncExternalStore` rather than reading the cookie in an effect: the
+ * server snapshot is null (no cookie access during SSR) and the client snapshot
+ * is the real value, so React reconciles the difference itself. Doing this with
+ * useEffect + setState would render the banner and then hide it, flashing it at
+ * every visitor who already decided.
+ */
+const subscribe = () => () => {}
+
+function useHasDecided(): boolean {
+  const cookie = useSyncExternalStore(
+    subscribe,
+    readConsentRaw,
+    () => null,
+  )
+  return cookie !== null
 }
 
 function writeConsent(consent: Consent) {
@@ -49,18 +62,13 @@ function writeConsent(consent: Consent) {
  */
 export function CookieConsent() {
   const t = useTranslations('legal')
-  const [isVisible, setIsVisible] = useState(false)
+  const hasDecided = useHasDecided()
+  const [justDecided, setJustDecided] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
   const [analytics, setAnalytics] = useState(false)
   const [marketing, setMarketing] = useState(false)
 
-  // Read on mount only. Rendering the banner during SSR would flash it at
-  // visitors who already decided.
-  useEffect(() => {
-    if (!readConsent()) setIsVisible(true)
-  }, [])
-
-  if (!isVisible) return null
+  if (hasDecided || justDecided) return null
 
   const decide = (choice: { analytics: boolean; marketing: boolean }) => {
     writeConsent({
@@ -69,7 +77,7 @@ export function CookieConsent() {
       marketing: choice.marketing,
       timestamp: new Date().toISOString(),
     })
-    setIsVisible(false)
+    setJustDecided(true)
   }
 
   return (
