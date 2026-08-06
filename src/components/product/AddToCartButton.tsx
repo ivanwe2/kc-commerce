@@ -4,6 +4,7 @@ import { Check, Minus, Plus } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useEffect, useState } from 'react'
 
+import { PricingTierTable } from '@/components/product/PricingTierTable'
 import { Button } from '@/components/ui/Button'
 import { formatPrice } from '@/lib/money'
 import { calculateTierPrice, nextTierHint, type PricingTier } from '@/lib/pricing'
@@ -19,9 +20,18 @@ import { useCartStore, type CartItem } from '@/stores/cart'
 export function AddToCartButton({
   item,
   disabled,
+  showTierTable = false,
 }: {
   item: Omit<CartItem, 'quantity'>
   disabled?: boolean
+  /**
+   * Render the bulk-pricing table here rather than on the page.
+   *
+   * The table has to live inside this component to highlight the row matching
+   * the current quantity — the quantity is client state, and a server-rendered
+   * table cannot see it.
+   */
+  showTierTable?: boolean
 }) {
   const t = useTranslations('product')
   const cartT = useTranslations('cart')
@@ -46,16 +56,33 @@ export function AddToCartButton({
   const clamp = (value: number) =>
     Math.min(Math.max(value, minQuantity), Math.max(minQuantity, item.maxStock))
 
+  const tierTable = showTierTable && tiers.length > 0 && (
+    <div>
+      <h2 className="text-lg font-semibold text-heading">{t('bulkPricing')}</h2>
+      <PricingTierTable
+        tiers={tiers}
+        basePrice={item.basePrice}
+        locale={locale}
+        highlightQuantity={quantity}
+        className="mt-2"
+      />
+    </div>
+  )
+
   if (disabled) {
     return (
-      <Button variant="primary" size="lg" block disabled>
-        {t('outOfStock')}
-      </Button>
+      <div className="space-y-6">
+        {tierTable}
+        <Button variant="primary" size="lg" block disabled>
+          {t('outOfStock')}
+        </Button>
+      </div>
     )
   }
 
   return (
     <div className="space-y-3">
+      {tierTable}
       <div className="flex items-center gap-3">
         <label htmlFor="quantity" className="text-sm font-medium text-body">
           {t('quantity')}

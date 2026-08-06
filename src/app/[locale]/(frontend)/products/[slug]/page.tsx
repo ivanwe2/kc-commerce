@@ -5,7 +5,6 @@ import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { AddToCartButton } from '@/components/product/AddToCartButton'
 import { ProductCard } from '@/components/product/ProductCard'
 import { ProductGallery } from '@/components/product/ProductGallery'
-import { PricingTierTable } from '@/components/product/PricingTierTable'
 import { StockBadge } from '@/components/ui/Badge'
 import { Link } from '@/i18n/routing'
 import { formatPrice } from '@/lib/money'
@@ -185,18 +184,6 @@ export default async function ProductPage({
             )}
           </div>
 
-          {tiers.length > 0 && (
-            <div className="mt-6">
-              <h2 className="text-lg font-semibold text-heading">{t('bulkPricing')}</h2>
-              <PricingTierTable
-                tiers={tiers}
-                basePrice={product.basePrice}
-                locale={locale}
-                className="mt-2"
-              />
-            </div>
-          )}
-
           {(product.minOrderQuantity ?? 1) > 1 && (
             <p className="mt-4 text-sm text-body">
               {t('minOrder', { count: product.minOrderQuantity ?? 1 })}
@@ -206,6 +193,7 @@ export default async function ProductPage({
           <div className="mt-6">
             <AddToCartButton
               disabled={stock <= 0}
+              showTierTable
               item={{
                 productId: product.id,
                 slug: product.slug ?? '',

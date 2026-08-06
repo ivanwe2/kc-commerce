@@ -47,7 +47,8 @@
     "featured": "Препоръчани продукти",
     "noProducts": "Няма намерени продукти",
     "productCount": "Продукти ({count})",
-    "addedToCart": "Добавено в количката"
+    "addedToCart": "Добавено в количката",
+    "saving": "Отстъпка"
   },
   "units": {
     "piece": "бр.",

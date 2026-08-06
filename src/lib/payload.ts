@@ -2,6 +2,7 @@ import config from '@payload-config'
 import { getPayload } from 'payload'
 import type { Payload, TypedLocale, Where } from 'payload'
 
+import { CACHE_TAGS, cachedQuery } from './cache'
 import type { Category, Product, Setting } from '@/payload-types'
 
 /**
@@ -82,22 +83,27 @@ export async function findProducts({
 }
 
 /** A single product by slug, or null. */
-export async function findProductBySlug(
+export const findProductBySlug = (
   slug: string,
   locale: StorefrontLocale,
-): Promise<Product | null> {
-  const payload = await getPayloadClient()
-
-  const result = await payload.find({
-    collection: 'products',
-    locale,
-    where: { and: [{ slug: { equals: slug } }, { isActive: { equals: true } }] },
-    limit: 1,
-    depth: 2,
-  })
-
-  return result.docs[0] ?? null
-}
+): Promise<Product | null> =>
+  cachedQuery(
+    async (s: string, loc: StorefrontLocale) => {
+      const payload = await getPayloadClient()
+      const result = await payload.find({
+        collection: 'products',
+        locale: loc,
+        where: { and: [{ slug: { equals: s } }, { isActive: { equals: true } }] },
+        limit: 1,
+        depth: 2,
+      })
+      return result.docs[0] ?? null
+    },
+    // Slug and locale are part of the key: without the locale a Bulgarian
+    // visitor and an English one would share one cache entry.
+    ['product', slug, locale],
+    [CACHE_TAGS.products, CACHE_TAGS.product(slug)],
+  )(slug, locale)
 
 /** Other products in the same category, excluding the one being viewed. */
 export async function findRelatedProducts(
@@ -127,20 +133,23 @@ export async function findRelatedProducts(
   return result.docs
 }
 
-export async function findCategories(locale: StorefrontLocale): Promise<Category[]> {
-  const payload = await getPayloadClient()
-
-  const result = await payload.find({
-    collection: 'categories',
-    locale,
-    where: { isActive: { equals: true } },
-    limit: 100,
-    sort: 'sortOrder',
-    depth: 1,
-  })
-
-  return result.docs
-}
+export const findCategories = (locale: StorefrontLocale): Promise<Category[]> =>
+  cachedQuery(
+    async (loc: StorefrontLocale) => {
+      const payload = await getPayloadClient()
+      const result = await payload.find({
+        collection: 'categories',
+        locale: loc,
+        where: { isActive: { equals: true } },
+        limit: 100,
+        sort: 'sortOrder',
+        depth: 1,
+      })
+      return result.docs
+    },
+    ['categories'],
+    [CACHE_TAGS.categories],
+  )(locale)
 
 export async function findCategoryBySlug(
   slug: string,
@@ -166,15 +175,15 @@ export async function findCategoryBySlug(
  * query in the app. Phase 8 wraps it in a cache tag invalidated by an
  * afterChange hook; until then it is a cheap single-row read.
  */
-export async function getSettings(locale: StorefrontLocale): Promise<Setting> {
-  const payload = await getPayloadClient()
-
-  return payload.findGlobal({
-    slug: 'settings',
-    locale,
-    depth: 1,
-  })
-}
+export const getSettings = (locale: StorefrontLocale): Promise<Setting> =>
+  cachedQuery(
+    async (loc: StorefrontLocale) => {
+      const payload = await getPayloadClient()
+      return payload.findGlobal({ slug: 'settings', locale: loc, depth: 1 })
+    },
+    ['settings'],
+    [CACHE_TAGS.settings],
+  )(locale)
 
 export async function findPageBySlug(slug: string, locale: StorefrontLocale) {
   const payload = await getPayloadClient()

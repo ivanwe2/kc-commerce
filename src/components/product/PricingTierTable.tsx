@@ -1,4 +1,6 @@
-import { getTranslations } from 'next-intl/server'
+'use client'
+
+import { useTranslations } from 'next-intl'
 
 import { formatPrice } from '@/lib/money'
 import type { PricingTier } from '@/lib/pricing'
@@ -7,11 +9,17 @@ import { cn } from '@/lib/utils'
 /**
  * Bulk pricing table.
  *
- * Shows the saving against the base price explicitly. Bulk buyers are the
- * higher-value customers here, and making them compute the discount themselves
- * is a good way to lose the larger order.
+ * A client component so the row matching the currently selected quantity can be
+ * highlighted live. It was a server component until QA caught that
+ * `highlightQuantity` was never passed — the quantity lives in the client
+ * stepper, so a server-rendered table could never see it and the highlight the
+ * plan called for silently did nothing.
+ *
+ * Savings are shown against the base price explicitly. Bulk buyers are the
+ * higher-value customers, and making them compute the discount themselves is a
+ * good way to lose the larger order.
  */
-export async function PricingTierTable({
+export function PricingTierTable({
   tiers,
   basePrice,
   locale,
@@ -24,7 +32,7 @@ export async function PricingTierTable({
   highlightQuantity?: number
   className?: string
 }) {
-  const t = await getTranslations('product')
+  const t = useTranslations('product')
 
   if (tiers.length === 0) return null
 
@@ -33,6 +41,7 @@ export async function PricingTierTable({
   return (
     <div className={cn('overflow-x-auto', className)}>
       <table className="w-full border-collapse text-sm">
+        <caption className="sr-only">{t('bulkPricing')}</caption>
         <thead>
           <tr className="border-b border-border-default text-left">
             <th scope="col" className="py-2 pr-4 font-medium text-secondary">
@@ -42,7 +51,7 @@ export async function PricingTierTable({
               {t('perUnit')}
             </th>
             <th scope="col" className="py-2 font-medium text-secondary">
-              {t('price')}
+              {t('saving')}
             </th>
           </tr>
         </thead>
@@ -59,9 +68,11 @@ export async function PricingTierTable({
             return (
               <tr
                 key={`${tier.minQuantity}-${tier.pricePerUnit}`}
+                // aria-current so the active tier is announced, not just coloured.
+                aria-current={isActive ? 'true' : undefined}
                 className={cn(
-                  'border-b border-border-default last:border-0',
-                  isActive && 'bg-primary-subtle',
+                  'border-b border-border-default transition-colors last:border-0',
+                  isActive && 'bg-primary-subtle font-medium',
                 )}
               >
                 <td className="py-2 pr-4 text-body">
