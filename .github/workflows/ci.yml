@@ -1,0 +1,74 @@
+name: CI
+
+# Lint, typecheck and build on every pull request.
+#
+# With no test suite by design, this is the only automated gate before merge —
+# a PR that does not build cannot land. It needs no Cloudflare credentials:
+# payload.config.ts falls back to local Miniflare bindings when
+# CLOUDFLARE_API_TOKEN is absent, so forks and untrusted PRs build fine.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Lint, typecheck, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Cloudflare binding types
+        # cloudflare-env.d.ts is committed, but regenerating proves it is in
+        # sync with wrangler.jsonc rather than a stale artefact.
+        run: pnpm exec wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build
+        env:
+          # Any 32+ character value: the build only needs the config to validate,
+          # never to sign a real token.
+          PAYLOAD_SECRET: ci-build-only-secret-not-used-for-signing
+          NEXT_PUBLIC_SITE_URL: https://example.com
+        run: pnpm build
+
+      - name: Check Worker bundle size
+        env:
+          PAYLOAD_SECRET: ci-build-only-secret-not-used-for-signing
+          NEXT_PUBLIC_SITE_URL: https://example.com
+        run: |
+          pnpm exec opennextjs-cloudflare build
+          SIZE=$(find .open-next/server-functions -name '*.js' -exec cat {} + | gzip -c | wc -c)
+          MB=$(echo "scale=2; $SIZE/1048576" | bc)
+          echo "Worker bundle: ${MB} MB gzipped (Cloudflare limit: 10 MB)"
+          # Fail below the real limit so there is room to react before a deploy
+          # is actually blocked.
+          if [ "$SIZE" -gt 9437184 ]; then
+            echo "::error::Bundle exceeds the 9 MB warning threshold — approaching Cloudflare's 10 MB hard limit."
+            exit 1
+          fi

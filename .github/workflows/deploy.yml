@@ -1,0 +1,81 @@
+name: Deploy
+
+# Manual deploy to Cloudflare.
+#
+# Deliberately NOT automatic on push to main. This is a shop that takes real
+# money; a deploy should be a decision, not a side effect of merging. Switch the
+# trigger to `push: branches: [main]` once you are comfortable with that.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        default: staging
+        type: choice
+        options: [staging, production]
+
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Run database migrations
+        # BEFORE the Worker goes live, so the schema is never behind the code.
+        # This is why migrations must stay backwards-compatible with the
+        # currently deployed Worker — additive columns, no destructive renames
+        # in a single step. `wrangler rollback` reverts the Worker in seconds
+        # but does NOT roll back D1.
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ENV: ${{ inputs.environment == 'production' && '' || inputs.environment }}
+          NODE_ENV: production
+          PAYLOAD_SECRET: ignore
+        run: pnpm exec payload migrate
+
+      - name: Build and deploy Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ENV: ${{ inputs.environment == 'production' && '' || inputs.environment }}
+          PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
+          NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
+        run: |
+          pnpm exec opennextjs-cloudflare build
+          if [ "${{ inputs.environment }}" = "production" ]; then
+            pnpm exec opennextjs-cloudflare deploy
+          else
+            pnpm exec opennextjs-cloudflare deploy --env=staging
+          fi
+
+      - name: Verify deployment
+        # A deploy that returns 200 on / but cannot reach D1 is a failed deploy.
+        run: |
+          sleep 10
+          URL="${{ vars.NEXT_PUBLIC_SITE_URL }}/api/health"
+          echo "Checking $URL"
+          STATUS=$(curl -s -o /tmp/health.json -w '%{http_code}' "$URL" || echo 000)
+          cat /tmp/health.json || true
+          if [ "$STATUS" != "200" ]; then
+            echo "::error::Health check returned $STATUS"
+            exit 1
+          fi

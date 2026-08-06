@@ -22,7 +22,7 @@ Single source of truth for what is actually built. Updated at the end of every p
 | 7 | Admin enhancements | ✅ Complete |
 | 8 | SEO & performance | ✅ Complete |
 | 9 | Error handling | ✅ Complete |
-| 10 | Deployment & launch prep | ⬜ Not started |
+| 10 | Deployment & launch prep | ✅ Code + docs ready; awaiting Cloudflare account |
 
 ---
 
@@ -222,12 +222,15 @@ locales; in-stock filter 6 → 5; category filter → 2; tier table shows correc
 
 ## Phase 10: Deployment & Launch Prep
 
-- [ ] Commit 10.1: Cloudflare deployment configuration
-- [ ] Commit 10.2: Provisioning runbook (human-executed)
-- [ ] Commit 10.3: Staging environment & CI
-- [ ] Commit 10.4: Pre-launch checklist
+- [x] Commit 10.1: Cloudflare deployment configuration
+- [x] Commit 10.2: Provisioning runbook — see `docs/DEPLOYMENT.md`
+- [x] Commit 10.3: Staging environment & CI
+- [x] Commit 10.4: Pre-launch checklist
 
-**Status:** ⬜ Not started
+**Status:** ✅ Code and docs complete. Nothing is deployed — provisioning needs
+a Cloudflare account, which is the stakeholder's step. Follow
+`docs/DEPLOYMENT.md`; it is ordered so each step is verifiable before the next.
+
 **Branch:** `phase/10-deployment`
 
 ---
@@ -238,8 +241,9 @@ Things the agent cannot decide alone. Carried forward until resolved.
 
 | # | Item | Blocking? | Notes |
 |---|---|---|---|
-| 1 | **Colour palette not signed off** | No | Plan's blue is the default; swappable from `src/styles/theme.css` in one edit |
-| 2 | **Company legal details** — company name, UIC/Bulstat, VAT no., registered address, trade register entry | **Yes, before launch** | Legally required on every page by the Bulgarian Electronic Commerce Act. Placeholders until provided |
+| 1 | **Colour palette not signed off** | No | Plan's blue is the default; swappable from `src/styles/theme.css` in one edit. `themes/warm-slate.css` included as a working alternative |
+| 2 | **Company legal details** — company name, UIC/Bulstat, VAT no., registered address, trade register entry | **Yes, before launch** | Legally required on every page. Enter once in Settings → Company; the footer and all four legal pages read from there. Currently seeded placeholders |
+| 2b | **Legal copy reviewed by a lawyer** | **Yes, before launch** | All four legal pages carry provisional text and display a visible warning banner until CMS content replaces them |
 | 3 | **Cloudflare account + Workers Paid plan** | **Yes, before deploy** | $5/mo; the free tier's 3 MB bundle cap is too small for Payload admin |
 | 4 | **Domain** | Yes, before launch | Needed for the custom domain, R2 media domain, and Image Transformations |
 | 5 | **Resend account + verified sending domain** | Yes, before launch | Order confirmation emails; DNS records go on the same Cloudflare zone |

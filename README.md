@@ -6,6 +6,7 @@ via Econt/Speedy. Bilingual (BG/EN).
 Built on **Payload CMS 3** and **Next.js 16**, running entirely on **Cloudflare**:
 Workers for compute, D1 for the database, R2 for media.
 
+- **Deploying? Start here:** [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
 - Plan: [`docs/kc-commerce-plan.md`](docs/kc-commerce-plan.md)
 - Progress: [`docs/development-tracker.md`](docs/development-tracker.md)
 - Platform decision: [`docs/adr/0001-cloudflare-platform.md`](docs/adr/0001-cloudflare-platform.md)
@@ -44,6 +45,7 @@ Visit `http://localhost:3000/admin` and create the first admin user.
 | `pnpm generate:types` | Regenerate Cloudflare binding + Payload types |
 | `pnpm preview` | Build the real Worker and serve it locally |
 | `pnpm bundle:check` | Report Worker bundle size against the 10 MB cap |
+| `pnpm seed` | Load development catalogue data (4 categories, 6 products) |
 | `pnpm deploy` | Migrate production D1, then deploy the Worker |
 
 ---
