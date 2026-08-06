@@ -155,7 +155,26 @@ export default buildConfig({
   },
 
   // D1 is a binding, not a connection string. There is no credential here by design.
-  db: sqliteD1Adapter({ binding: cloudflare.env.D1 }),
+  db: sqliteD1Adapter({
+    binding: cloudflare.env.D1,
+
+    /**
+     * Dev schema push is OFF, and must stay off.
+     *
+     * By default Payload diffs the schema on every dev boot and pushes changes
+     * straight to the database. That collides head-on with a migrated database:
+     * push re-issues CREATE INDEX for indexes the migration already created, D1
+     * returns "index already exists", and Payload fails to initialise — which
+     * surfaces as a 500 on /admin with no obvious connection to the cause.
+     *
+     * Production D1 can only be changed by migrations anyway, so keeping dev on
+     * the same mechanism means the schema you develop against is exactly the one
+     * you ship. After changing a collection, run:
+     *
+     *   pnpm migrate:create <name> && pnpm migrate
+     */
+    push: false,
+  }),
 
   editor: lexicalEditor(),
 
