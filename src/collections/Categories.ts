@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 import { activeOrAuthenticated, isAdminOrEditor } from '@/access'
 import { slugify } from '@/lib/slugify'
+import { revalidateCategory } from './hooks/revalidate'
 
 export const Categories: CollectionConfig = {
   slug: 'categories',
@@ -81,6 +82,7 @@ export const Categories: CollectionConfig = {
   ],
 
   hooks: {
+    afterChange: [revalidateCategory],
     beforeValidate: [
       ({ data }) => {
         if (!data) return data

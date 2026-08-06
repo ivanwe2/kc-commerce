@@ -1,6 +1,24 @@
 import { withPayload } from '@payloadcms/next/withPayload'
+import { initOpenNextCloudflareForDev } from '@opennextjs/cloudflare'
 import createNextIntlPlugin from 'next-intl/plugin'
 import type { NextConfig } from 'next'
+
+/**
+ * Makes `getCloudflareContext()` work under `next dev`.
+ *
+ * Without this, D1 and R2 bindings are simply absent outside the deployed
+ * Worker — which means checkout, stock reservation, order numbering and the
+ * health check all fail locally while looking like application bugs.
+ *
+ * `remoteBindings` is gated on the API token for the same reason as in
+ * payload.config.ts: wrangler.jsonc marks D1 `remote: true` so production
+ * migrations hit the real database, but a developer with no Cloudflare
+ * credentials must still get the local Miniflare bindings rather than an
+ * authentication error.
+ */
+initOpenNextCloudflareForDev({
+  remoteBindings: Boolean(process.env.CLOUDFLARE_API_TOKEN),
+})
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')
 

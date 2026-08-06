@@ -15,13 +15,13 @@ Single source of truth for what is actually built. Updated at the end of every p
 | 0 | Cloudflare-native scaffolding | ✅ Complete |
 | 1 | Data model — collections & globals | ✅ Complete |
 | 2 | Internationalization (BG + EN) | ✅ Complete |
-| 3 | Storefront — layout & core pages | 🔄 Core done; search + rich text pending |
-| 4 | Shopping cart | ⬜ Not started |
-| 5 | Checkout & order flow | ⬜ Not started |
-| 6 | Legal compliance | ⬜ Not started |
-| 7 | Admin enhancements | ⬜ Not started |
-| 8 | SEO & performance | ⬜ Not started |
-| 9 | Error handling | ⬜ Not started |
+| 3 | Storefront — layout & core pages | ✅ Complete |
+| 4 | Shopping cart | ✅ Complete |
+| 5 | Checkout & order flow | ✅ Complete |
+| 6 | Legal compliance | ✅ Complete (placeholder copy) |
+| 7 | Admin enhancements | ✅ Complete |
+| 8 | SEO & performance | ✅ Complete |
+| 9 | Error handling | ✅ Complete |
 | 10 | Deployment & launch prep | ⬜ Not started |
 
 ---
