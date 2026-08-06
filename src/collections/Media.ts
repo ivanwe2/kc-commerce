@@ -1,80 +1,62 @@
 import type { CollectionConfig } from 'payload'
-import {
-  FixedToolbarFeature,
-  InlineToolbarFeature,
-  lexicalEditor,
-} from '@payloadcms/richtext-lexical'
-import path from 'path'
-import { fileURLToPath } from 'url'
 
-import { anyone } from '../access/anyone'
-import { authenticated } from '../access/authenticated'
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024 // 5MB
 
-const filename = fileURLToPath(import.meta.url)
-const dirname = path.dirname(filename)
-
+/**
+ * Uploads live in R2 (see `storage` in payload.config.ts).
+ *
+ * Note what is NOT here: imageSizes, crop, focalPoint. Those all require sharp,
+ * which cannot run on Workers. Responsive variants are produced at request time
+ * by Cloudflare Image Transformations instead — one stored original, any width
+ * on demand. See src/lib/imageLoader.ts.
+ */
 export const Media: CollectionConfig = {
   slug: 'media',
-  folders: true,
   access: {
-    create: authenticated,
-    delete: authenticated,
-    read: anyone,
-    update: authenticated,
+    read: () => true,
+  },
+  admin: {
+    useAsTitle: 'filename',
   },
   fields: [
     {
       name: 'alt',
       type: 'text',
       required: true,
-      localized: true,
-    },
-    {
-      name: 'caption',
-      type: 'richText',
-      localized: true,
-      editor: lexicalEditor({
-        features: ({ rootFeatures }) => {
-          return [...rootFeatures, FixedToolbarFeature(), InlineToolbarFeature()]
-        },
-      }),
+      admin: {
+        description: 'Describes the image for screen readers and search engines. Required.',
+      },
     },
   ],
   upload: {
-    staticDir: path.resolve(dirname, '../../public/media'),
-    adminThumbnail: 'thumbnail',
-    focalPoint: true,
-    imageSizes: [
-      {
-        name: 'thumbnail',
-        width: 300,
-      },
-      {
-        name: 'square',
-        width: 500,
-        height: 500,
-      },
-      {
-        name: 'small',
-        width: 600,
-      },
-      {
-        name: 'medium',
-        width: 900,
-      },
-      {
-        name: 'large',
-        width: 1400,
-      },
-      {
-        name: 'xlarge',
-        width: 1920,
-      },
-      {
-        name: 'og',
-        width: 1200,
-        height: 630,
-        crop: 'center',
+    // Unsupported on Workers — no image processor available.
+    crop: false,
+    focalPoint: false,
+    mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/avif'],
+    filesRequiredOnCreate: true,
+    // Payload's safe-fetch guard exists to stop SSRF when an admin supplies an
+    // image by URL. On Workers that protection is already enforced by the
+    // runtime via the `global_fetch_strictly_public` compatibility flag, and
+    // Payload's Node-oriented DNS check misbehaves there. Belt is redundant;
+    // braces are load-bearing.
+    skipSafeFetch: true,
+  },
+  hooks: {
+    beforeOperation: [
+      ({ req, operation }) => {
+        if (operation !== 'create' && operation !== 'update') return
+
+        const file = req.file
+        if (!file) return
+
+        if (file.size > MAX_UPLOAD_BYTES) {
+          throw new Error(`File exceeds the 5MB limit (received ${Math.round(file.size / 1024)}KB).`)
+        }
+
+        // Replace the client-supplied filename entirely. It is untrusted input,
+        // and predictable names invite enumeration of the media library.
+        const extension = file.name.includes('.') ? file.name.split('.').pop()!.toLowerCase() : 'bin'
+        file.name = `${crypto.randomUUID()}.${extension}`
       },
     ],
   },

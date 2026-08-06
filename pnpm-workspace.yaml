@@ -1,0 +1,26 @@
+# pnpm 11 moved build-script approval and release-age gating out of package.json.
+#
+# allowBuilds: postinstall scripts we explicitly trust. `workerd` is the
+# Cloudflare runtime itself and MUST be allowed — without its binary,
+# `wrangler dev` and the local D1/R2 emulation cannot start.
+allowBuilds:
+  '@parcel/watcher': true
+  '@swc/core': true
+  esbuild: true
+  unrs-resolver: true
+  workerd: true
+
+# Payload packages must all sit on one identical version; mixing them produces
+# runtime failures that look like unrelated bugs. These are pinned deliberately,
+# so exclude them from the minimum-release-age gate.
+minimumReleaseAgeExclude:
+  - '@payloadcms/db-d1-sqlite@3.87.1'
+  - '@payloadcms/drizzle@3.87.1'
+  - '@payloadcms/graphql@3.87.1'
+  - '@payloadcms/next@3.87.1'
+  - '@payloadcms/plugin-cloud-storage@3.87.1'
+  - '@payloadcms/richtext-lexical@3.87.1'
+  - '@payloadcms/storage-r2@3.87.1'
+  - '@payloadcms/translations@3.87.1'
+  - '@payloadcms/ui@3.87.1'
+  - payload@3.87.1

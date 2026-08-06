@@ -1,0 +1,19 @@
+# Local development secrets. Copy to `.dev.vars` and fill in.
+# `.dev.vars` is git-ignored and is the local stand-in for `wrangler secret put`.
+#
+# NOTE: there is no DATABASE_URL and no storage token on this stack.
+# D1 and R2 are Worker bindings declared in wrangler.jsonc — nothing to configure.
+
+# Required. Signs Payload auth tokens. Generate with: openssl rand -hex 32
+PAYLOAD_SECRET=
+
+# Optional until Phase 5 (transactional email)
+RESEND_API_KEY=
+RESEND_FROM_EMAIL=orders@kctrading.bg
+ORDER_NOTIFICATION_EMAIL=
+
+# Optional. Authorises Payload's job queue endpoint.
+CRON_SECRET=
+
+# trace | debug | info | warn | error | fatal
+PAYLOAD_LOG_LEVEL=info

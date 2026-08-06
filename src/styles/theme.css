@@ -1,0 +1,118 @@
+/* =============================================================================
+ * KC TRADING — THEME
+ * =============================================================================
+ *
+ * THIS IS THE ONLY FILE THAT MAY CONTAIN A COLOUR VALUE.
+ *
+ * The palette is not signed off with stakeholders yet, so rebranding must stay
+ * a single-file edit. Components never reference a hex value or a numbered
+ * Tailwind colour (bg-blue-800, text-slate-400) — they use the semantic tokens
+ * defined below (bg-primary, text-muted, border-default, ...).
+ *
+ * Two layers, and the separation is the whole point:
+ *
+ *   1. RAMP   — raw brand/neutral values. Swap these to rebrand.
+ *   2. ROLES  — what a colour is FOR. Components bind to these.
+ *
+ * A role may be repointed at a different ramp step without touching a single
+ * component. To try a whole new palette, see src/styles/themes/ for a drop-in
+ * alternative and the instructions in that folder.
+ * ========================================================================== */
+
+:root {
+  /* --- 1. RAMP ------------------------------------------------------------ */
+
+  /* Brand — Blue. Trustworthy and unremarkable, which is correct for commerce. */
+  --ramp-brand-50: #eff6ff;
+  --ramp-brand-100: #dbeafe;
+  --ramp-brand-500: #3b82f6;
+  --ramp-brand-700: #1d4ed8;
+  --ramp-brand-800: #1e40af;
+  --ramp-brand-900: #1e3a8a;
+
+  /* Neutral — Slate */
+  --ramp-neutral-0: #ffffff;
+  --ramp-neutral-50: #f8fafc;
+  --ramp-neutral-100: #f1f5f9;
+  --ramp-neutral-200: #e2e8f0;
+  --ramp-neutral-400: #94a3b8;
+  --ramp-neutral-600: #475569;
+  --ramp-neutral-700: #334155;
+  --ramp-neutral-900: #0f172a;
+
+  /* Status */
+  --ramp-success-100: #dcfce7;
+  --ramp-success-600: #16a34a;
+  --ramp-success-800: #166534;
+  --ramp-warning-100: #fef3c7;
+  --ramp-warning-600: #d97706;
+  --ramp-warning-800: #92400e;
+  --ramp-danger-50: #fef2f2;
+  --ramp-danger-100: #fee2e2;
+  --ramp-danger-600: #dc2626;
+  --ramp-danger-800: #991b1b;
+
+  /* --- 2. ROLES ----------------------------------------------------------- */
+
+  /* Brand actions */
+  --color-primary: var(--ramp-brand-800);
+  --color-primary-hover: var(--ramp-brand-900);
+  --color-primary-subtle: var(--ramp-brand-100);
+  --color-primary-foreground: var(--ramp-neutral-0);
+
+  /* Surfaces */
+  --color-background: var(--ramp-neutral-0);
+  --color-surface: var(--ramp-neutral-50);
+  --color-surface-alt: var(--ramp-neutral-100);
+
+  /* Text */
+  --color-heading: var(--ramp-neutral-900);
+  --color-body: var(--ramp-neutral-700);
+  --color-muted: var(--ramp-neutral-400);
+  --color-secondary: var(--ramp-neutral-600);
+
+  /* Lines */
+  --color-border: var(--ramp-neutral-200);
+  --color-border-strong: var(--ramp-neutral-400);
+  --color-ring: var(--ramp-brand-800);
+
+  /* Commerce-specific. Price is its own role on purpose: it is the single most
+     important number on the page and must never inherit a body-text change. */
+  --color-price: var(--ramp-neutral-900);
+  --color-price-old: var(--ramp-neutral-400);
+  --color-price-sale: var(--ramp-danger-600);
+
+  /* Status */
+  --color-success: var(--ramp-success-600);
+  --color-success-subtle: var(--ramp-success-100);
+  --color-success-foreground: var(--ramp-success-800);
+  --color-warning: var(--ramp-warning-600);
+  --color-warning-subtle: var(--ramp-warning-100);
+  --color-warning-foreground: var(--ramp-warning-800);
+  --color-danger: var(--ramp-danger-600);
+  --color-danger-subtle: var(--ramp-danger-100);
+  --color-danger-foreground: var(--ramp-danger-800);
+
+  /* --- 3. SHAPE & DEPTH --------------------------------------------------- */
+  /* Tokens, not per-component values, for the same reason as colour. */
+
+  --radius-control: 0.375rem; /* buttons, inputs */
+  --radius-surface: 0.5rem; /* cards, panels */
+
+  --shadow-raised: 0 1px 2px 0 rgb(15 23 42 / 0.05);
+  --shadow-floating: 0 4px 6px -1px rgb(15 23 42 / 0.1), 0 2px 4px -2px rgb(15 23 42 / 0.1);
+  --shadow-overlay: 0 10px 15px -3px rgb(15 23 42 / 0.1), 0 4px 6px -4px rgb(15 23 42 / 0.1);
+
+  --layout-max: 80rem; /* 1280px */
+  --header-height: 4rem; /* 64px */
+  --transition-interactive: 150ms;
+}
+
+/* Light theme only for launch — but expressed as a token layer, so a dark
+   variant later is an additive block here, not a component refactor.
+   Deliberately left commented out rather than deleted, to document the seam:
+
+   @media (prefers-color-scheme: dark) {
+     :root[data-theme='dark'] { --color-background: var(--ramp-neutral-900); ... }
+   }
+*/

@@ -12,7 +12,7 @@ Single source of truth for what is actually built. Updated at the end of every p
 
 | Phase | Scope | Status |
 |---|---|---|
-| 0 | Cloudflare-native scaffolding | 🔄 In progress (rebuild) |
+| 0 | Cloudflare-native scaffolding | ✅ Complete |
 | 1 | Data model — collections & globals | ⏳ Port pending |
 | 2 | Internationalization (BG + EN) | ⏳ Port pending |
 | 3 | Storefront — layout & core pages | ⬜ Not started |
@@ -62,17 +62,45 @@ Actually merged before the platform change:
 
 ## Phase 0: Cloudflare-Native Scaffolding & Configuration
 
-- [ ] Commit 0.1: Rebuild scaffold on the Cloudflare template
-- [ ] Commit 0.2: Wrangler configuration & bindings
-- [ ] Commit 0.3: Payload config — D1, R2, dual binding resolution
-- [ ] Commit 0.4: Typed environment access
-- [ ] Commit 0.5: Security headers
-- [ ] Commit 0.6: Theming foundation
-- [ ] Commit 0.7: Repo hygiene
+- [x] Commit 0.1: Rebuild scaffold on the Cloudflare template
+- [x] Commit 0.2: Wrangler configuration & bindings
+- [x] Commit 0.3: Payload config — D1, R2, dual binding resolution
+- [x] Commit 0.4: Typed environment access
+- [x] Commit 0.5: Security headers
+- [x] Commit 0.6: Theming foundation
+- [x] Commit 0.7: Repo hygiene
 
-**Status:** 🔄 In progress
+**Status:** ✅ Complete
 **Branch:** `phase/0-cloudflare-scaffold`
-**Exit criteria:** `pnpm dev` serves `/admin` against local D1 + R2 with no Docker; `pnpm build` clean.
+
+**Verified:**
+- `pnpm dev` → `/` 200, `/admin` 200 against local Miniflare D1 + R2
+- `pnpm migrate` applies the initial SQLite migration to local D1
+- `pnpm build` and `pnpm lint` clean
+- `opennextjs-cloudflare build` produces a deployable Worker
+- Security headers present on storefront responses, absent on `/admin` (as intended)
+- Bundle: **5.60 MB gzipped** against the 10 MB paid-plan ceiling
+
+**Platform surprises found and resolved during this phase** — all documented in
+README "Gotchas", because each one silently breaks the build or the deploy:
+
+| Problem | Resolution |
+|---|---|
+| Payload's obfuscated `drizzle-kit/api` import is unresolvable under Turbopack, failing OpenNext's esbuild pass | Build with `next build --webpack` |
+| Next 16's `proxy.ts` is Node-runtime-only; OpenNext cannot run Node middleware | Keep `middleware.ts` and tolerate the deprecation warning |
+| Upstream template imports `generatePayloadViewport`, which does not exist in Payload 3.87.1 | Template tracks 3.82.1; layout rewritten |
+| Template's top-level `storage` config key does not exist in 3.87.1 | r2Storage registered as a plugin |
+| `.dev.vars` loads onto the Wrangler proxy env, not `process.env`, so Payload reported "missing secret key" | Bridge scalars onto `process.env` in `payload.config.ts` |
+| `"remote": true` made local `pnpm build` demand a `CLOUDFLARE_API_TOKEN` | Remote bindings gated on the token actually being present |
+| `wrangler types` narrows env vars to literal types, breaking comparisons | Widen at the read site |
+| `sass` (4.8 MB) traced into the Worker despite being build-time only | `outputFileTracingExcludes` — cut 1.4 MB gzipped |
+
+**Security fix (unplanned):** `.env.local` and `.env.example` were tracked in git
+on a **public** repository. Contents were dev placeholders only (a localhost
+Postgres URL and literal `dev-secret-key-...` strings), so **nothing sensitive
+leaked and no rotation is needed** — but the files are now untracked and
+`.gitignore` covers the pattern. They remain in git history; harmless given the
+values, and left alone rather than rewriting published history.
 
 ---
 
