@@ -6,6 +6,7 @@ import { notFound } from 'next/navigation'
 import React from 'react'
 
 import { CartProvider } from '@/components/cart/CartProvider'
+import { CookieConsent } from '@/components/legal/CookieConsent'
 import { Footer } from '@/components/layout/Footer'
 import { Header } from '@/components/layout/Header'
 import { routing } from '@/i18n/routing'
@@ -82,6 +83,7 @@ export default async function LocaleLayout({
             {children}
           </div>
           <Footer locale={locale as StorefrontLocale} />
+          <CookieConsent />
         </NextIntlClientProvider>
       </body>
     </html>
