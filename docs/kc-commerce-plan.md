@@ -4,7 +4,9 @@
 
 **KC Trading** is a Bulgarian e-commerce store selling miscellaneous items in both retail and bulk quantities, with tiered pricing that rewards larger orders. The store targets Bulgarian and English-speaking customers, operates under EU/Bulgarian legal requirements, and uses Cash on Delivery via Econt/Speedy as its sole payment method at launch.
 
-**Development method:** Agentic — Hermes agent + locally hosted Qwen 3.6 27B. Every phase below is structured as atomic commits with explicit instructions the agent can execute sequentially.
+**Development method:** Agentic — Claude Code (Opus 5). Every phase below is structured as atomic commits with explicit instructions the agent can execute sequentially.
+
+> **Plan revision v2 — 2026-08-06.** The platform was changed from Vercel + Neon Postgres + Vercel Blob to **Cloudflare end-to-end** (Workers + D1 + R2). See `docs/adr/0001-cloudflare-platform.md` for the decision record and trade-offs. All infrastructure sections below reflect v2. The data model, design system, security rules, and legal requirements are unchanged from v1.
 
 ---
 
@@ -14,182 +16,207 @@
 |-------|-----------|-----|
 | **Framework** | Next.js 15 (App Router) | SSR/SSG for SEO, React Server Components, Server Actions, dominant ecosystem |
 | **CMS + Backend** | Payload CMS 3.x | Installs inside `/app`, admin panel included, built-in localization, TypeScript-native, MIT license, most AI-agent-friendly CMS in 2026 |
-| **Database** | PostgreSQL via Neon | Free tier (0.5 GB, 100 CU-hrs/project), scale-to-zero, Payload 3.x uses Drizzle ORM on Postgres |
+| **Runtime/Hosting** | Cloudflare Workers via OpenNext (`@opennextjs/cloudflare`) | Runs Next.js on Cloudflare's global network, ~300 PoPs, no cold starts, no region config |
+| **Database** | Cloudflare D1 (SQLite) via `@payloadcms/db-d1-sqlite` | Official Payload adapter, zero-config binding, global read replicas, no connection pooling to manage |
 | **ORM** | Drizzle (via Payload) | Bundled with Payload 3.x, type-safe, lightweight |
-| **Styling** | Tailwind CSS 4 + shadcn/ui | Utility-first, tree-shakeable, accessible component primitives |
+| **File Storage** | Cloudflare R2 via `@payloadcms/storage-r2` | Native bucket binding (no S3 credentials), **zero egress fees** — decisive for an image-heavy catalogue |
+| **Image Optimization** | Cloudflare Image Transformations (`/cdn-cgi/image/`) | `sharp` cannot run on Workers; CF resizes at the edge instead. See "Media & Images" below |
+| **Styling** | Tailwind CSS 4 (CSS-first `@theme`) + shadcn/ui | Utility-first, tree-shakeable, accessible primitives. Palette lives in **one token file** — see "Theming" |
 | **Language** | TypeScript 5.x (strict mode) | End-to-end type safety from DB to UI |
 | **i18n** | Payload built-in localization + next-intl | Payload localizes content fields natively; next-intl handles UI strings/routing |
-| **Email** | Resend | Free tier: 100 emails/day, 3,000/month — enough for launch |
-| **File Storage** | Vercel Blob | Serverless-compatible media storage for product images, included in Vercel Pro |
-| **Hosting** | Vercel (Hobby → Pro) | One-click Payload deploy, global edge network, preview deployments per PR |
-| **DNS/CDN** | Cloudflare (free) | DNS, DDoS protection, extra caching layer (optional — Vercel has its own CDN) |
+| **Email** | Resend | Free tier: 100 emails/day, 3,000/month — enough for launch. Pure `fetch`, works on Workers |
+| **DNS/CDN/WAF** | Cloudflare | Same account as the app — DNS, DDoS, WAF, bot management, caching all in one place |
+| **Deploy tooling** | Wrangler 4 | `wrangler deploy`, D1 migrations, R2 management, local Miniflare emulation |
 
 ### Hosting Decision
 
-> **Vercel** is the recommended host. Payload CMS 3.x was redesigned to run natively inside Next.js (no Express) and officially supports one-click Vercel deployment. Payload provides official Vercel templates with Neon + Vercel Blob integration.
+> **Cloudflare end-to-end.** Payload ships an official `with-cloudflare-d1` template (Workers + D1 + R2), so this is a supported path, not a hack.
 >
-> - **Development phase:** Use Vercel Hobby (free). This is fine for non-commercial dev/staging.
-> - **Before going live:** Upgrade to Vercel Pro ($20/month). Hobby plan prohibits commercial use — an e-commerce store requires Pro.
-> - **Media uploads:** Local disk (`./media/`) for development — no cloud storage needed locally. On Vercel, use the official `@payloadcms/storage-vercel-blob` adapter (1GB free on Hobby, usage-based on Pro). The adapter is conditionally loaded: it only activates when the `BLOB_READ_WRITE_TOKEN` env var is present, so the same codebase works in both environments with zero config changes.
-> - **Database:** Neon Postgres (free tier for dev: 0.5GB, 100 CU-hrs. Launch tier $5/mo for production).
-> - **If you ever outgrow Vercel:** The app is standard Next.js — you can move to Railway, Hetzner VPS, or any Node.js host without code changes.
+> - **Runtime:** Next.js is compiled to a Worker by `@opennextjs/cloudflare`. Static assets are served from Cloudflare's asset store, not the Worker.
+> - **Workers Paid plan ($5/month) is REQUIRED.** The free tier caps a Worker at 3 MB compressed; Payload's admin panel exceeds that. Paid allows 10 MB. **Keeping the bundle under 10 MB is an ongoing constraint** — see "Bundle Budget" below.
+> - **Database:** D1 in local dev is a Miniflare-emulated SQLite file under `.wrangler/state` — **no Docker, no local Postgres**. Production D1 is the same engine, replicated.
+> - **Media:** R2 bucket binding in both dev (Miniflare local bucket) and prod. Identical code path — no conditional adapter loading like the old Vercel Blob setup needed.
+> - **If you ever outgrow Cloudflare:** Payload abstracts the database behind its adapter interface. Moving to Postgres is a `payload.config.ts` adapter swap plus a fresh migration set. Application code does not change.
+
+### Platform Constraints (read before every phase)
+
+These are consequences of the Workers runtime. They are not optional to work around.
+
+| Constraint | Consequence | Mitigation |
+|---|---|---|
+| **No `sharp`** | Payload cannot generate `imageSizes`, crop, or focal point | `upload: { crop: false, focalPoint: false }`, no `imageSizes`. Resize at the edge via Cloudflare Image Transformations with a custom `next/image` loader |
+| **10 MB Worker bundle (paid)** | Every dependency counts | GraphQL disabled, no heavy client libs, `serverExternalPackages` tuned, bundle size checked each phase |
+| **GraphQL unsupported on Workers** | Payload's `/api/graphql` breaks | `graphQL: { disable: true }` — we use the Local API anyway, and it cuts ~1 MB |
+| **D1 has no interactive transactions** | `payload.db.beginTransaction()` is a no-op | Stock decrement and order numbering use **atomic single-statement conditional UPDATEs** with compensating rollback. See Phase 5 |
+| **D1 write throughput is single-primary** | Writes don't scale horizontally | Fine at this volume; reads scale via replicas. Revisit only above ~100 orders/min |
+| **Workers blocks private-IP fetch** | SSRF protection is built in | `skipSafeFetch: true` is safe here |
 
 ### Monthly Cost Estimate (Launch)
 
 | Service | Cost |
 |---------|------|
-| Vercel Pro | $20/month |
-| Neon Postgres (free tier → Launch $5) | $0-5 |
-| Vercel Blob (1GB included in Pro) | $0 |
-| Cloudflare DNS/CDN | Free |
+| Cloudflare Workers Paid (required for bundle size) | $5/month |
+| Cloudflare D1 (5 GB storage, 25 bn reads/mo included) | $0 |
+| Cloudflare R2 (10 GB free, **zero egress**) | $0 |
+| Cloudflare Image Transformations (5,000 unique/mo free) | $0 |
+| Cloudflare DNS/CDN/WAF | Free |
 | Resend email (free tier) | Free |
 | Domain (.bg or .com) | ~€10-15/year |
-| **Total** | **~$20-25/month** |
+| **Total** | **~$5/month** |
+
+Roughly a **4× cost reduction** versus the v1 Vercel Pro + Neon plan, with zero egress fees as catalogue traffic grows.
 
 ---
 
 ## Architecture Overview
 
 ```
-┌─── Vercel (Edge Network) ────────────────────┐
-│                                               │
-│              Next.js App                      │
-│  ┌────────────┐  ┌──────────────────────────┐ │
-│  │ Storefront │  │   Payload CMS Admin      │ │
-│  │  (public)  │  │   (/admin route)         │ │
-│  │            │  │                          │ │
-│  │ - Home     │  │ - Products CRUD          │ │
-│  │ - Products │  │ - Orders management      │ │
-│  │ - Cart     │  │ - Categories             │ │
-│  │ - Checkout │  │ - Pages (CMS)            │ │
-│  │ - Pages    │  │ - Media library          │ │
-│  └─────┬──────┘  └────────────┬─────────────┘ │
-│        │    Payload Local API  │              │
-│        └──────────┬───────────┘              │
-│                   │                           │
-│          ┌────────▼────────┐                 │
-│          │  Drizzle ORM    │                 │
-│          └────────┬────────┘                 │
-└───────────────────┼──────────────────────────┘
-                    │
-     ┌──────────────┼──────────────┐
-     │              │              │
-┌────▼─────┐ ┌─────▼──────┐ ┌────▼──────┐
-│ Neon     │ │ Vercel     │ │ Resend    │
-│ Postgres │ │ Blob       │ │ (email)   │
-│ (DB)     │ │ (media)    │ │           │
-└──────────┘ └────────────┘ └───────────┘
+                        ┌──────────────────────────┐
+   Browser ────────────▶│  Cloudflare Edge (~300)  │
+                        │  DNS · WAF · DDoS · CDN  │
+                        └────────────┬─────────────┘
+                                     │
+   ┌─────────────────────────────────▼──────────────────────────────┐
+   │  Worker: kc-commerce  (Next.js compiled by OpenNext)           │
+   │                                                                │
+   │  ┌────────────┐  ┌──────────────────────────┐                  │
+   │  │ Storefront │  │   Payload CMS Admin      │   ┌────────────┐ │
+   │  │  (public)  │  │   (/admin route)         │   │  ASSETS    │ │
+   │  │            │  │                          │   │  binding   │ │
+   │  │ - Home     │  │ - Products CRUD          │   │ (static,   │ │
+   │  │ - Products │  │ - Orders management      │   │  free, not │ │
+   │  │ - Cart     │  │ - Categories             │   │  billed as │ │
+   │  │ - Checkout │  │ - Pages (CMS)            │   │  requests) │ │
+   │  │ - Pages    │  │ - Media library          │   └────────────┘ │
+   │  └─────┬──────┘  └────────────┬─────────────┘                  │
+   │        │    Payload Local API │                                │
+   │        └──────────┬───────────┘                                │
+   │                   │                                            │
+   │          ┌────────▼────────┐                                   │
+   │          │  Drizzle ORM    │                                   │
+   │          └────────┬────────┘                                   │
+   └───────────────────┼────────────────────────────────────────────┘
+              bindings │ (no network credentials, no connection strings)
+     ┌─────────────────┼──────────────────┬──────────────────┐
+     │                 │                  │                  │
+┌────▼─────┐    ┌──────▼──────┐   ┌───────▼────────┐  ┌──────▼─────┐
+│ D1       │    │ R2          │   │ /cdn-cgi/image │  │ Resend     │
+│ SQLite   │    │ (media,     │   │ edge resize    │  │ (email,    │
+│ + read   │    │  zero       │   │ webp/avif      │  │  via HTTPS │
+│ replicas │    │  egress)    │   │ (replaces      │  │  fetch)    │
+└──────────┘    └─────────────┘   │  sharp)        │  └────────────┘
+                                  └────────────────┘
 ```
+
+**Why bindings matter:** D1 and R2 are attached to the Worker as *bindings*, not as network services. There is no `DATABASE_URL`, no S3 access key, and no credential to leak or rotate. Access is granted by Cloudflare's runtime to that specific Worker. This removes an entire class of secret-management risk that the v1 Neon/Vercel Blob design carried.
 
 ---
 
-## Local Development Environment (Docker)
+## Local Development Environment (Wrangler / Miniflare)
 
-> **The agent MUST set up Docker for local development in Phase 0.** This ensures a consistent, reproducible environment and avoids depending on Neon for local work.
-
-### Docker Compose Setup
-
-```yaml
-# docker-compose.yml
-services:
-  db:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: kctrading
-      POSTGRES_PASSWORD: kctrading_dev
-      POSTGRES_DB: kctrading
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U kctrading"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
-volumes:
-  pgdata:
-```
+> **No Docker. No local Postgres.** Wrangler emulates D1 and R2 on your machine using Miniflare, storing state in `.wrangler/state/`. The bindings your code sees locally are the same shape as production.
 
 ### How It Works
 
 ```
-LOCAL DEVELOPMENT (Docker Compose):
-┌──────────────────────────────────────────┐
-│  npm run dev  (Next.js + Payload)        │
-│  ↕ connects to ↕                         │
-│  localhost:5432 (Postgres in Docker)     │
-│  Media uploads → ./media/ (local disk)   │
-└──────────────────────────────────────────┘
+LOCAL DEVELOPMENT:
+┌────────────────────────────────────────────────┐
+│  pnpm dev   (next dev)                         │
+│  ↕ getPlatformProxy() from wrangler            │
+│  D1  → local SQLite in .wrangler/state         │
+│  R2  → local bucket in .wrangler/state         │
+└────────────────────────────────────────────────┘
 
-DEPLOYED ON VERCEL:
-┌──────────────────────────────────────────┐
-│  Vercel Serverless Functions             │
-│  ↕ connects to ↕                         │
-│  Neon Postgres (cloud)                   │
-│  Media uploads → Vercel Blob (cloud)     │
-└──────────────────────────────────────────┘
+DEPLOYED ON CLOUDFLARE:
+┌────────────────────────────────────────────────┐
+│  Worker (OpenNext build of the same Next app)  │
+│  ↕ runtime bindings                            │
+│  D1  → replicated SQLite                       │
+│  R2  → object storage, zero egress             │
+└────────────────────────────────────────────────┘
 ```
+
+`payload.config.ts` picks the right source automatically: when running under the Payload CLI or in dev it pulls bindings from Wrangler's platform proxy; in the deployed Worker it reads them from `getCloudflareContext()`. One config, both environments.
 
 ### Environment Variable Strategy
 
-```
-# .env.local (git-ignored, local dev)
-DATABASE_URL=postgresql://kctrading:kctrading_dev@localhost:5432/kctrading
-PAYLOAD_SECRET=dev-secret-at-least-32-characters-long-change-in-prod
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
+Cloudflare's model splits cleanly in two, and this is a security improvement over v1:
 
-# Vercel Dashboard (production env vars)
-DATABASE_URL=postgresql://...@neon.tech/kctrading?sslmode=require
-PAYLOAD_SECRET=<production-secret-from-openssl-rand>
-BLOB_READ_WRITE_TOKEN=<vercel-generated>
+**Bindings** (D1, R2, ASSETS) — declared in `wrangler.jsonc`, injected by the runtime. Not secrets, not in `.env`, nothing to leak.
+
+**Secrets** — set with `wrangler secret put`, stored encrypted by Cloudflare, never in the repo.
+
+```
+# .dev.vars (git-ignored — local secrets only)
+PAYLOAD_SECRET=<openssl rand -hex 32>
 RESEND_API_KEY=re_xxxxxxxxxxxx
-NEXT_PUBLIC_SITE_URL=https://kctrading.bg
+
+# Production (set once, per environment)
+wrangler secret put PAYLOAD_SECRET
+wrangler secret put RESEND_API_KEY
+wrangler secret put CRON_SECRET
+
+# Non-secret public config lives in wrangler.jsonc [vars]
+NEXT_PUBLIC_SITE_URL, NEXT_PUBLIC_DEFAULT_LOCALE, NEXT_PUBLIC_SUPPORTED_LOCALES
 ```
 
-### Media Storage Rules
+There is **no `DATABASE_URL` and no storage token** anywhere in this project. That is by design.
+
+### Media & Images (replaces the Vercel Blob rules)
 
 | Environment | Storage | How |
 |-------------|---------|-----|
-| **Local dev** | Local disk (`./media/`) | Payload default — no adapter needed |
-| **Vercel Hobby** (staging) | Vercel Blob (1GB free) | `@payloadcms/storage-vercel-blob` adapter |
-| **Vercel Pro** (production) | Vercel Blob (usage-based) | Same adapter, larger limits |
+| **Local dev** | Miniflare R2 bucket | `r2Storage({ bucket: env.R2 })` — same code as prod |
+| **Production** | Cloudflare R2 | Same binding, real bucket, zero egress |
 
-The Vercel Blob adapter is **conditionally loaded** — only activate it when the `BLOB_READ_WRITE_TOKEN` env var is present. This means the same codebase works locally (disk) and on Vercel (blob) without any config changes:
+Because `sharp` cannot run on Workers, **Payload does not generate thumbnails**. Resizing happens at the edge instead:
 
-```typescript
-// In payload.config.ts
-const plugins = []
-if (process.env.BLOB_READ_WRITE_TOKEN) {
-  plugins.push(
-    vercelBlobStorage({
-      collections: { media: true },
-      token: process.env.BLOB_READ_WRITE_TOKEN,
-    })
-  )
-}
+1. The original upload is stored in R2 exactly once.
+2. A custom `next/image` loader rewrites requests to `/cdn-cgi/image/width=…,quality=…,format=auto/<origin-url>`.
+3. Cloudflare resizes, converts to WebP/AVIF by client support, and caches the result at the edge.
+
+This is strictly better than pre-generating three fixed sizes: any width is available, format negotiation is automatic, and storage stays at one object per image. Transformations are free up to 5,000 unique/month, then $0.50 per 1,000.
+
+The loader must degrade gracefully — if `NEXT_PUBLIC_CF_IMAGES` is not enabled (e.g. on `workers.dev` before the custom domain is attached), it returns the original URL untouched so images still render.
+
+### Bundle Budget
+
+The Worker must stay under **10 MB compressed**. Check after every phase:
+
 ```
+pnpm build && pnpm dlx opennextjs-cloudflare build
+ls -la .open-next/worker.js
+```
+
+Rules that keep us inside the budget:
+- GraphQL disabled (`graphQL: { disable: true }`)
+- No `framer-motion`, no icon library other than `lucide-react` (tree-shaken imports only)
+- No moment/dayjs/lodash/axios — native APIs only
+- Client components only where genuinely interactive; Server Components by default
+- Dynamic-import heavy client UI (cart drawer, dialogs)
 
 ### Agent Workflow for Local Dev
 
 ```
-1. Start the database:
-   docker compose up -d
+1. Install dependencies:
+   pnpm install
 
-2. Verify Postgres is running:
-   docker compose ps  (status should be "healthy")
+2. Create local secrets:
+   cp .dev.vars.example .dev.vars    (then fill PAYLOAD_SECRET)
 
-3. Start the app:
-   npm run dev
+3. Apply migrations to the local D1 database:
+   pnpm payload migrate
 
-4. First run only: Payload auto-creates tables via Drizzle push.
-   Visit http://localhost:3000/admin to create the first admin user.
+4. Start the app:
+   pnpm dev
 
-5. When done developing:
-   docker compose down          (stops containers, keeps data)
-   docker compose down -v       (stops AND wipes database)
+5. First run only: visit http://localhost:3000/admin to create the first admin user.
+
+6. Reset local data (nuke Miniflare state):
+   rm -rf .wrangler/state && pnpm payload migrate
+
+7. Preview the real Worker build before deploying:
+   pnpm preview
 ```
 
 ---
@@ -549,27 +576,36 @@ Settings (Payload global)
 ### Database Security
 - Use parameterized queries only (Drizzle ORM does this by default)
 - Never construct raw SQL from user input
-- Database credentials in environment variables only — NEVER in code
-- Neon enforces SSL connections by default — verify this is not disabled
+- **There are no database credentials.** D1 is reached through a Worker binding, not a
+  connection string — nothing to store, leak, or rotate. If a `DATABASE_URL` ever appears
+  in this project, something has gone wrong
+- Raw D1 access (`payload.db.drizzle`) is permitted only for the atomic stock/counter
+  statements in Phase 5, and only with bound parameters
 
 ### Environment Variables
-- `.env` file in `.gitignore` — NEVER committed
-- Use `.env.example` with placeholder values for documentation
-- Separate `.env.local` (dev) from production env vars (set in hosting dashboard)
-- Required vars: `DATABASE_URL`, `PAYLOAD_SECRET`, `RESEND_API_KEY`, `NEXT_PUBLIC_SITE_URL`
+- `.dev.vars` in `.gitignore` — NEVER committed
+- Use `.dev.vars.example` with placeholder values for documentation
+- Production secrets live in Cloudflare (`wrangler secret put`), encrypted at rest,
+  never in the repo and never in `wrangler.jsonc`
+- Required secrets: `PAYLOAD_SECRET`, `RESEND_API_KEY`, `CRON_SECRET`
+- `wrangler.jsonc` `vars` holds **non-secret public config only** — it is committed
 
 ### Dependency Security
 - Pin exact versions in `package.json` (no `^` or `~`)
-- Run `npm audit` before every deployment
+- Keep every `@payloadcms/*` package on one identical version
+- Run `pnpm audit` before every deployment
 - Use only well-maintained packages (check last commit date, downloads)
 - Minimize dependencies — prefer built-in Node.js APIs and Payload features
 
 ### File Upload Security
 - Restrict upload MIME types to images only: `image/jpeg`, `image/png`, `image/webp`, `image/avif`
 - Set max file size: 5MB per image
-- Vercel Blob stores uploads externally with signed URLs by default — no path traversal risk
+- R2 is object storage addressed by key, not a filesystem — path traversal is not
+  possible by construction
 - Generate unique filenames (UUID) to prevent enumeration attacks
-- In local dev, uploads go to `./media` — ensure this directory is in `.gitignore`
+- Validate the actual file signature, not just the client-supplied MIME type
+- The R2 bucket stays private; media is served through the Worker or a dedicated
+  read-only custom domain — never via a public bucket listing
 
 ### Headers & Transport
 - Force HTTPS everywhere (Cloudflare handles SSL termination)
@@ -680,8 +716,8 @@ FOR EACH PHASE:
 
 2. FOR EACH COMMIT within the phase:
    - Implement the commit's instructions
-   - Run `npm run build` — fix any errors before proceeding
-   - Run `npm run dev` and manually verify the feature works
+   - Run `pnpm build` — fix any errors before proceeding
+   - Run `pnpm dev` and manually verify the feature works
    - Stage and commit with a conventional commit message:
      git add -A
      git commit -m "feat(phase-N): description of what was built"
@@ -692,17 +728,23 @@ FOR EACH PHASE:
      "fix(phase-1): correct pricing tier overlap validation"           ← bugfix mid-phase
 
 3. After ALL commits in the phase are done:
-   - Run full build one more time: `npm run build`
+   - Run full build one more time: `pnpm build`
    - Push the branch:
-     git push origin phase/N-short-name
-   - Merge into main (simulate PR merge):
-     git checkout main
-     git merge phase/N-short-name --no-ff -m "merge: Phase N - Short Description"
-     git push origin main
+     git push -u origin phase/N-short-name
+   - Open a real pull request (the repo has a GitHub remote):
+     gh pr create --base main --title "Phase N — Short Description" --body "..."
+   - The PR body states: what was built, what was verified, what was
+     deliberately left out, and any decision the human should review.
+   - Merge with a merge commit once CI is green:
+     gh pr merge --merge --delete-branch=false
    - DO NOT delete the phase branch (keep for reference)
 
 4. Move to the next phase (back to step 1)
 ```
+
+**Why PRs and not direct merges:** each phase becomes a reviewable unit with a
+diff the stakeholder can read at their own pace, and CI (lint + typecheck +
+build) gates the merge. With no test suite, that gate is the safety net.
 
 ### Commit Message Convention
 
@@ -740,263 +782,247 @@ Examples:
 
 ---
 
-### PHASE 0: Project Scaffolding & Configuration
+### PHASE 0: Cloudflare-Native Scaffolding & Configuration
 
-**Goal:** Initialize the project with all tooling, Payload CMS, Docker-based local Postgres, and development environment. After this phase, `docker compose up -d && npm run dev` starts the full stack with Payload admin accessible at `/admin`.
+**Goal:** Rebuild the project on the Cloudflare stack. After this phase, `pnpm dev` starts Next.js with live D1 and R2 bindings emulated by Wrangler, and the Payload admin is reachable at `/admin` with no Docker and no connection strings.
+
+> **This phase replaces the v1 Phase 0 entirely.** The v1 scaffold was Payload's `website` template on Postgres. It carried Pages-builder blocks, live preview, the admin bar, form-builder, redirects and a CMS-managed Header/Footer that this store does not use — all of it counting against a 10 MB Worker budget. We rebuild from the official `with-cloudflare-d1` template instead and port only what we need.
 
 ---
 
-#### Commit 0.1: Initialize Next.js + Payload CMS
+#### Commit 0.1: Rebuild scaffold on the Cloudflare template
 
 **Instructions for agent:**
 
 ```
-1. Create a new Payload CMS project using the official CLI:
-   npx create-payload-app@latest kc-trading
+1. Take the official Payload template as the baseline:
+   https://github.com/payloadcms/payload/tree/main/templates/with-cloudflare-d1
 
-2. When prompted, select:
-   - Template: "website" (this gives the best starting point)
-   - Database: PostgreSQL (with Drizzle adapter)
-   - Package manager: npm (or pnpm if preferred)
+   Adopt from it verbatim:
+   - src/app/(payload)/**            ← admin + REST route handlers
+   - open-next.config.ts
+   - the payload.config.ts binding-resolution pattern (see Commit 0.3)
 
-3. The CLI creates a Next.js 15 project with Payload installed inside /app
-   Verify the structure:
-   kc-trading/
-   ├── src/
-   │   ├── app/
-   │   │   ├── (frontend)/     ← storefront routes
-   │   │   └── (payload)/      ← Payload admin routes
-   │   ├── collections/        ← Payload collection configs
-   │   ├── globals/            ← Payload global configs
-   │   └── payload.config.ts   ← main Payload config
-   ├── .env                    ← database URL, secrets
-   ├── tsconfig.json
-   ├── tailwind.config.ts
-   └── package.json
+2. Delete every artifact of the Postgres/Vercel scaffold:
+   - docker-compose.yml, Dockerfile
+   - src/migrations/** (Postgres SQL — cannot be reused on SQLite)
+   - the website-template surface: Header/Footer CMS globals, blocks,
+     live preview, AdminBar, PayloadRedirects, seed/BeforeDashboard components
+   - next-sitemap (superseded by Next's native sitemap.ts in Phase 8)
+   - the test harness: vitest, playwright, @testing-library, jsdom
+     (explicit project decision — velocity over coverage; see "Testing Posture")
 
-4. If the template structure differs, restructure to match the above.
+3. Pin dependency versions exactly — no ^ or ~ (Security Rules).
+   Payload packages must all sit on ONE version. Mixed Payload versions
+   produce runtime failures that look like unrelated bugs.
 
-5. Set TypeScript to strict mode in tsconfig.json:
+4. TypeScript strict mode, plus:
+     "strict": true,
+     "noUncheckedIndexedAccess": true,
+     "forceConsistentCasingInFileNames": true
+```
+
+**Verification:** `pnpm install` resolves with no peer warnings. `pnpm lint` passes.
+
+---
+
+#### Commit 0.2: Wrangler configuration & bindings
+
+**Instructions for agent:**
+
+```
+1. Create wrangler.jsonc:
+
    {
-     "compilerOptions": {
-       "strict": true,
-       "noUncheckedIndexedAccess": true,
-       "forceConsistentCasingInFileNames": true
-     }
+     "$schema": "node_modules/wrangler/config-schema.json",
+     "main": ".open-next/worker.js",
+     "name": "kc-commerce",
+     "compatibility_date": "<today>",
+     "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+     "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+     "d1_databases": [{ "binding": "D1", "database_name": "kc-commerce",
+                        "database_id": "<placeholder>", "remote": true }],
+     "r2_buckets":   [{ "binding": "R2", "bucket_name": "kc-commerce-media" }],
+     "observability": { "enabled": true },
+     "vars": { NEXT_PUBLIC_* non-secret config }
    }
+
+   Add a "staging" environment block with its own D1 database and R2 bucket
+   so preview deploys never touch production data.
+
+2. database_id is a placeholder until the human runs `wrangler d1 create`.
+   Local dev does NOT need a real id — Miniflare keys off database_name.
+   Document this clearly; it is the #1 confusion point for this stack.
+
+3. Generate binding types:
+   wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts
+   Commit the generated file so CI type-checks without Cloudflare access.
+
+4. .gitignore: .wrangler/, .open-next/, .dev.vars
 ```
 
-**Verification:** `npm run dev` starts without errors. Visit `http://localhost:3000/admin` — Payload setup screen appears.
+**Verification:** `pnpm exec wrangler types` regenerates cleanly; `CloudflareEnv` exposes `D1`, `R2`, `ASSETS`.
 
 ---
 
-#### Commit 0.2: Docker Compose for Local Development
+#### Commit 0.3: Payload config — D1, R2, and dual binding resolution
 
 **Instructions for agent:**
 
 ```
-1. Create docker-compose.yml in the project root:
+1. payload.config.ts resolves bindings from two different sources:
 
-   services:
-     db:
-       image: postgres:16-alpine
-       restart: unless-stopped
-       ports:
-         - "5432:5432"
-       environment:
-         POSTGRES_USER: kctrading
-         POSTGRES_PASSWORD: kctrading_dev
-         POSTGRES_DB: kctrading
-       volumes:
-         - pgdata:/var/lib/postgresql/data
-       healthcheck:
-         test: ["CMD-SHELL", "pg_isready -U kctrading"]
-         interval: 5s
-         timeout: 3s
-         retries: 5
+   const cloudflare =
+     isCLI || !isProduction
+       ? await getCloudflareContextFromWrangler()   // Miniflare, local dev + CLI
+       : await getCloudflareContext({ async: true }) // inside the deployed Worker
 
-   volumes:
-     pgdata:
+   The CLI branch matters: `payload migrate` runs in Node, NOT in the Worker,
+   so it must reach D1 through Wrangler's platform proxy.
 
-2. Add to .gitignore (if not already present):
-   pgdata/
+2. db: sqliteD1Adapter({ binding: cloudflare.env.D1 })
+   storage: [ r2Storage({ bucket: cloudflare.env.R2, collections: { media: true } }) ]
 
-3. Start the database:
-   docker compose up -d
+3. graphQL: { disable: true }
+   Unsupported on Workers AND a large bundle win. We use the Local API.
 
-4. Wait for healthy status:
-   docker compose ps
-   (status should show "healthy")
+4. Custom logger: Workers has no pino transport. Route all levels through
+   console.* with JSON payloads so Cloudflare's log stream stays structured
+   and greppable. Level from PAYLOAD_LOG_LEVEL.
 
-5. Update .env to use the local Postgres:
-   DATABASE_URL=postgresql://kctrading:kctrading_dev@localhost:5432/kctrading
+5. Auth hardening (moved forward from v1 Phase 1 — it belongs in config):
+   tokenExpiration: 7200, maxLoginAttempts: 5, lockTime: 600000,
+   cookies: { secure: true, sameSite: 'strict' }
 
-6. Test: npm run dev should start and connect to local Postgres.
-   Payload will auto-create tables on first run.
-
-NOTE: The agent should always start Docker before running npm run dev.
-Add a reminder in the project README.
+6. Do NOT import sharp. It cannot run on Workers.
 ```
 
-**Verification:** `docker compose ps` shows healthy db. `npm run dev` connects to local Postgres without errors.
+**Verification:** `pnpm payload migrate:create` connects to local D1 and writes a SQLite migration.
 
 ---
 
-#### Commit 0.3: Environment Configuration
+#### Commit 0.4: Typed environment access
 
 **Instructions for agent:**
 
 ```
-1. Create .env.example with ALL required variables (placeholder values):
-   # Local development (Docker Postgres)
-   DATABASE_URL=postgresql://kctrading:kctrading_dev@localhost:5432/kctrading
-   PAYLOAD_SECRET=your-secret-key-min-32-chars-change-in-production
-   NEXT_PUBLIC_SITE_URL=http://localhost:3000
-   RESEND_API_KEY=re_xxxxxxxxxxxx
-   NEXT_PUBLIC_DEFAULT_LOCALE=bg
-   NEXT_PUBLIC_SUPPORTED_LOCALES=bg,en
-   # Only needed on Vercel (leave blank for local dev)
-   BLOB_READ_WRITE_TOKEN=
+1. src/lib/env.ts — zod-validated, parsed once.
 
-2. Create .env.local with actual development values:
-   - DATABASE_URL: postgresql://kctrading:kctrading_dev@localhost:5432/kctrading
-     (points to Docker Postgres, NOT Neon — Neon is for deployed environments only)
-   - PAYLOAD_SECRET: Generate with `openssl rand -hex 32`
-   - NEXT_PUBLIC_SITE_URL: http://localhost:3000 for dev
-   - BLOB_READ_WRITE_TOKEN: leave empty (media uses local disk in dev)
-
-3. Verify .env and .env.local are in .gitignore
-
-4. Create src/lib/env.ts — a typed environment variable accessor:
-   Use zod to validate all env vars at startup. If any are missing, throw
-   a clear error message stating which variable is missing.
-
-   import { z } from 'zod'
+   Cloudflare splits config in two, and env.ts must reflect that honestly:
+   - Secrets + vars arrive as process.env in the Worker (OpenNext maps them)
+   - Bindings (D1/R2) are NOT env vars — never model them in this schema
 
    const envSchema = z.object({
-     DATABASE_URL: z.string().min(1),
      PAYLOAD_SECRET: z.string().min(32),
-     NEXT_PUBLIC_SITE_URL: z.string().url(),
+     NEXT_PUBLIC_SITE_URL: z.url(),
      RESEND_API_KEY: z.string().optional(),
-     BLOB_READ_WRITE_TOKEN: z.string().optional(),
-     NEXT_PUBLIC_DEFAULT_LOCALE: z.enum(['bg', 'en']).default('bg'),
+     CRON_SECRET: z.string().optional(),
+     NEXT_PUBLIC_DEFAULT_LOCALE: z.enum(['bg','en']).default('bg'),
    })
 
-   export const env = envSchema.parse(process.env)
+2. Validation must be lazy (a getter or a memoised function), NOT a bare
+   top-level parse. A top-level throw during Worker module evaluation takes
+   down every route including /admin, with an opaque error. Fail at the
+   point of use with a message naming the missing variable.
 
-5. NEVER import process.env directly anywhere else — always use this module.
+3. NEVER read process.env anywhere else.
+
+4. Create .dev.vars.example documenting every secret. .dev.vars is git-ignored.
 ```
 
-**Verification:** App starts. Missing env vars produce clear error messages.
+**Verification:** Removing PAYLOAD_SECRET produces a clear named error, not a blank 500.
 
 ---
 
-#### Commit 0.4: Security Headers Middleware
+#### Commit 0.5: Security headers
 
 **Instructions for agent:**
 
 ```
-1. Create src/middleware.ts (Next.js middleware):
+Same header set as v1 (CSP, nosniff, DENY, Referrer-Policy, Permissions-Policy,
+HSTS, X-DNS-Prefetch-Control) with Cloudflare-specific corrections:
 
-   Set the following headers on ALL responses:
-   - Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'none';
-   - X-Content-Type-Options: nosniff
-   - X-Frame-Options: DENY
-   - X-XSS-Protection: 0  (modern browsers: CSP replaces this)
-   - Referrer-Policy: strict-origin-when-cross-origin
-   - Permissions-Policy: camera=(), microphone=(), geolocation=()
-   - Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
-   - X-DNS-Prefetch-Control: off
+1. HSTS is set by Cloudflare at the edge too — set it in ONE place (middleware)
+   and keep max-age consistent to avoid a conflicting duplicate header.
 
-   IMPORTANT: The middleware must NOT block Payload admin routes.
-   Use matcher config to apply to public routes only, or conditionally
-   relax CSP for /admin/* paths (Payload admin needs inline scripts).
+2. CSP must NOT be applied to /admin. Payload's admin panel needs inline
+   scripts and styles; a storefront-grade CSP breaks it. Scope by path.
 
-2. Middleware should also handle locale detection (implemented in Phase 2).
-   For now, just set headers.
+3. img-src must include the R2 custom domain and, when enabled, the
+   /cdn-cgi/image transformation origin.
+
+4. Middleware runs on every request and therefore inside the Worker's CPU
+   budget. Keep it allocation-light: no JSON parsing, no crypto, no awaits
+   beyond the intl matcher.
 ```
 
-**Verification:** Check response headers in browser DevTools on any page.
+**Verification:** Headers present on storefront routes; `/admin` loads and functions.
 
 ---
 
-#### Commit 0.5: Install Core Dependencies
+#### Commit 0.6: Theming foundation
 
 **Instructions for agent:**
 
 ```
-Run:
-   npm install zod @tanstack/react-query zustand next-intl resend
-   npm install -D @types/node
+The colour scheme is NOT agreed with stakeholders yet. It must be swappable
+without touching component code. This is a hard requirement, not a nicety.
 
-Packages and their purposes:
-   - zod: Schema validation for forms, env vars, API inputs
-   - @tanstack/react-query: NOT for SSR data (Payload Local API handles that) —
-     only for client-side mutations (add to cart, place order)
-   - zustand: Lightweight client state for shopping cart (persisted to localStorage)
-   - next-intl: UI string translations and locale routing
-   - resend: Transactional email sending
+1. src/styles/theme.css is the single source of truth. Raw palette values are
+   declared ONCE as CSS custom properties, then mapped to SEMANTIC tokens:
 
-Do NOT install:
-   - axios (use native fetch)
-   - lodash (use native JS methods)
-   - moment/dayjs (use native Intl.DateTimeFormat)
-   - any CSS framework besides Tailwind (already included)
-   - any ORM (Payload bundles Drizzle)
-   - any auth library (Payload has built-in auth)
-```
-
-**Verification:** `npm ls --depth=0` shows clean dependency tree, no peer dependency warnings.
-
----
-
-#### Commit 0.6: Git Configuration
-
-**Instructions for agent:**
-
-```
-1. Initialize git: git init
-
-2. Create/update .gitignore:
-   node_modules/
-   .next/
-   .env
-   .env.local
-   .env.production
-   *.log
-   dist/
-   media/
-   .DS_Store
-   coverage/
-
-3. Create .nvmrc:
-   22
-
-4. Create .prettierrc:
-   {
-     "semi": false,
-     "singleQuote": true,
-     "trailingComma": "all",
-     "tabWidth": 2,
-     "printWidth": 100
+   :root {
+     --brand-600: #1E40AF;          /* raw ramp — the only place hex appears */
+     ...
+     --color-primary: var(--brand-600);        /* semantic — what components use */
+     --color-primary-hover: var(--brand-700);
+     --color-surface: var(--slate-50);
+     --color-price: var(--slate-900);
    }
 
-5. Create .eslintrc.json extending Next.js and TypeScript recommended rules.
-   Add rule: no-console: "warn" (prevent debug logs in production)
+2. Tailwind 4 CSS-first config maps semantic tokens to utilities via @theme
+   inline, so `bg-primary` / `text-price` resolve to the variables above.
 
-6. Create the initial commit on main:
-   git add -A
-   git commit -m "chore(phase-0): initialize project with Payload CMS, Next.js 15, and core tooling"
+3. RULE: no hex value and no Tailwind numbered colour (bg-blue-800, text-slate-400)
+   may appear in any component. Components reference semantic tokens only.
+   Rebranding is then a single-file edit.
 
-7. From this point forward, follow the branching strategy defined in the
-   "Git Branching & Commit Strategy" section. Since we're still in Phase 0,
-   continue committing to the current branch until Phase 0 is complete,
-   then merge to main and start phase/1-data-model.
+4. Ship the v1 blue palette from the Design System section as the DEFAULT,
+   and add a second ready-made theme file to prove the swap works end to end.
 
-   NOTE: For Phase 0 specifically, it's acceptable to work directly on main
-   since this IS the initial scaffolding. Starting from Phase 1 onward,
-   always create a phase branch first.
+5. Light theme only for now — but express it as a token layer, so adding a
+   dark variant later is a media-query block, not a refactor.
 ```
+
+**Verification:** Changing `--brand-600` in one file restyles every primary surface in the app.
+
+---
+
+#### Commit 0.7: Repo hygiene
+
+**Instructions for agent:**
+
+```
+1. .gitignore: node_modules, .next, .open-next, .wrangler, .dev.vars, *.log, .DS_Store
+2. .nvmrc: 24   (the Cloudflare template requires Node >= 24.15)
+3. .prettierrc, eslint flat config, no-console: warn
+4. README: the Wrangler workflow, NOT the old Docker workflow
+```
+
+### Testing Posture
+
+Automated tests are **deliberately excluded** from this build. This is an explicit
+stakeholder decision to prioritise velocity while the product surface is still moving.
+
+The mitigations that replace them, which the agent MUST uphold:
+- `pnpm build` must pass before every commit — the type system is the safety net,
+  so strict mode and honest types are non-negotiable
+- Money, stock, and order state are computed **server-side only**, never trusted
+  from the client, so the highest-risk paths have no client-side surface to regress
+- Every phase is manually exercised in both locales before merge
+
+If tests are reintroduced later, start with the checkout server action — it is the
+only code in this project where a silent regression costs real money.
 
 ---
 
@@ -1075,9 +1101,20 @@ This is the most complex collection. Key details:
 
 - orderNumber: text field, unique, NOT editable after creation
   Generate in a beforeValidate hook: "KC-" + year + "-" + zero-padded sequence
-  Use a database sequence or atomic counter for the sequence number.
-  IMPORTANT: This must be concurrency-safe. Use a Payload global or a
-  separate "counters" table with an atomic increment.
+
+  CONCURRENCY: SQLite has no sequences, and read-then-write in JS races.
+  Use a dedicated `counters` table and one atomic statement:
+
+    INSERT INTO counters (key, value) VALUES (?1, 1)
+    ON CONFLICT(key) DO UPDATE SET value = value + 1
+    RETURNING value
+
+  Key it per year ("orders:2026") so numbering restarts each January.
+  Do NOT use a Payload global for this — globals are read-modify-write through
+  the ORM and will hand two simultaneous orders the same number.
+
+  Consume a number only AFTER stock has been successfully reserved, so failed
+  checkouts do not burn sequence numbers and leave visible gaps in the order book.
 
 - status: select field with options:
   pending, confirmed, processing, shipped, delivered, cancelled, returned
@@ -1188,16 +1225,16 @@ Configure the built-in Media collection in src/collections/Media.ts:
 - alt: localized text field (required for accessibility)
 - Restrict MIME types: image/jpeg, image/png, image/webp, image/avif
 - Max file size: 5MB
-- Configure imageSizes for responsive thumbnails:
-  - thumbnail: { width: 300, height: 300, crop: 'center' }
-  - card: { width: 600, height: 600, crop: 'center' }
-  - hero: { width: 1200, height: 800, crop: 'center' }
+- **Do NOT configure imageSizes, crop, or focalPoint.** `sharp` cannot run on
+  Workers, so Payload has no image processor. Set:
+    upload: { crop: false, focalPoint: false }
+  Responsive variants come from Cloudflare Image Transformations at request time
+  instead — one stored original, any width on demand. See Phase 8.
 - Set unique filename generation using a beforeChange hook:
-  Generate a UUID-based filename to prevent path traversal attacks.
+  Generate a UUID-based filename to prevent enumeration.
   Preserve the original file extension.
-- Set upload directory: './media' for local dev. In production, the Vercel Blob
-  storage adapter (configured in Phase 10) handles uploads automatically —
-  no code changes needed between dev and prod.
+- Storage is the R2 binding in BOTH dev and prod (Miniflare emulates it locally),
+  so there is no dev/prod divergence to test around.
 ```
 
 ---
@@ -1261,13 +1298,14 @@ Configure src/collections/Users.ts (Payload creates this by default):
        defaultLocale: 'bg',
        fallback: true,  // fallback to default locale if translation missing
      },
-     db: postgresAdapter({ pool: { connectionString: process.env.DATABASE_URL } }),
+     db: sqliteD1Adapter({ binding: cloudflare.env.D1 }),
+     graphQL: { disable: true },
      // ... rest of config
    })
 
 2. Run migrations:
-   npx payload migrate:create
-   npx payload migrate
+   pnpm payload migrate:create
+   pnpm payload migrate
 
 3. Verify in Payload admin: all collections appear with correct fields.
    Create a test product, category, and order to verify relationships work.
@@ -1383,24 +1421,22 @@ Create src/components/LanguageSwitcher.tsx:
 **Instructions for agent:**
 
 ```
-1. Configure Tailwind CSS theme in tailwind.config.ts:
-   - Light theme ONLY (no dark mode toggle)
-   - Color palette — clean and professional:
-     primary: A blue or teal — something trustworthy for commerce
-     (e.g., primary-50 through primary-900 scale)
-     secondary: Neutral warm gray
-     accent: For CTAs and highlights
-     background: white (#FFFFFF)
-     surface: Light gray (#F8F9FA or similar)
-     text: Near-black (#1A1A2E or similar)
-     border: Light gray (#E5E7EB)
-     success: Green (for "in stock", confirmations)
-     warning: Amber (for "low stock")
-     error: Red (for errors, "out of stock")
-   - Font: Use a system font stack for zero-cost and fast loading:
-     font-sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif']
-     Install @fontsource/inter or use next/font/google for Inter
-   - Spacing and border-radius: consistent across components
+1. The theme layer already exists from Commit 0.6 — do NOT redefine colours here.
+   Tailwind 4 is CSS-first: there is no tailwind.config.ts colour block. The
+   palette lives in src/styles/theme.css and is exposed through @theme inline.
+
+   This phase only CONSUMES semantic tokens:
+     bg-surface, text-body, border-default, bg-primary, text-price, …
+
+   HARD RULE, enforced by lint: no hex literals and no numbered Tailwind colours
+   (bg-blue-800, text-slate-400) in any component under src/components or
+   src/app. The stakeholders have not signed off on the palette, and a rebrand
+   must stay a one-file change.
+
+   - Light theme only for now; tokens are structured so a dark variant is
+     additive later.
+   - Font: Inter via next/font (self-hosted, subset, display: swap).
+   - Spacing and radius are tokens too (--radius-md), not per-component values.
 
 2. Install shadcn/ui components (cherry-pick what's needed):
    npx shadcn@latest init
@@ -1652,9 +1688,11 @@ Implement search using Payload's built-in full-text search.
    - "View all results" link → /products?q=searchterm
    - Empty state: "No results for 'X'"
 
-3. For MVP, basic text search is fine. PostgreSQL's built-in
-   full-text search (via Drizzle) can be added later for better results.
-   Do NOT add Algolia or Elasticsearch at this stage — overkill.
+3. For MVP, basic `like` search is fine. When it stops being enough, the D1
+   upgrade path is SQLite **FTS5** — a virtual table kept in sync by a Payload
+   afterChange hook. That is a Phase-8+ optimisation, not MVP work.
+   Do NOT add Algolia or Elasticsearch at this stage — overkill, and every
+   client SDK eats into the Worker bundle budget.
 ```
 
 ---
@@ -1864,9 +1902,29 @@ export async function createOrder(formData: CheckoutFormData) {
   //    - Calculate final total
 
   // 4. DECREMENT stock atomically
-  //    Use a transaction to prevent race conditions:
-  //    - For each item, UPDATE products SET stock = stock - quantity WHERE stock >= quantity
-  //    - If any UPDATE affects 0 rows, the stock was insufficient → rollback
+  //    *** D1 HAS NO INTERACTIVE TRANSACTIONS. Read this before writing code. ***
+  //    You cannot BEGIN, do work, then COMMIT/ROLLBACK across awaits. Payload's
+  //    beginTransaction() is a no-op on the D1 adapter. Overselling must be
+  //    prevented WITHOUT a surrounding transaction.
+  //
+  //    Use the fact that a SINGLE UPDATE statement is atomic in SQLite:
+  //
+  //      UPDATE products SET stock = stock - ?1
+  //      WHERE id = ?2 AND stock >= ?1
+  //      RETURNING stock
+  //
+  //    - The WHERE clause is the guard. Two concurrent orders for the last unit:
+  //      one UPDATE matches and returns a row, the other matches 0 rows. No lock
+  //      needed, no lost update possible.
+  //    - Run one statement per item, sequentially, tracking which succeeded.
+  //    - If ANY item returns 0 rows: COMPENSATE — replay the successful
+  //      decrements in reverse (stock = stock + qty) and fail the order with
+  //      "Only N units of X remain". This is a saga, not a rollback: it is
+  //      eventually consistent, and that is acceptable because the compensating
+  //      write only ever RETURNS stock, never oversells.
+  //    - Decrement BEFORE creating the order. If order creation then fails, run
+  //      the same compensation. Reserving stock for an order that does not exist
+  //      is recoverable; selling stock that does not exist is not.
 
   // 5. CREATE order via Payload Local API
   const payload = await getPayload({ config })
@@ -1909,7 +1967,13 @@ SECURITY NOTES:
   or a simple in-memory store). Max 5 orders per IP per hour.
 - NEVER return internal errors to the client — only user-friendly messages.
 - Log all order creation attempts (successful and failed) for auditing.
-- The stock decrement MUST be atomic (SQL transaction level) to prevent overselling.
+- The stock decrement MUST be atomic (single guarded UPDATE, per above) to prevent
+  overselling. Do NOT read stock, decide in JS, then write — that is a lost-update
+  race and it WILL oversell under concurrency.
+- Rate limiting on Workers: an in-memory counter is per-isolate and therefore
+  useless as a limit. Use the Cloudflare WAF rate-limiting rule as the outer
+  defence, and a D1-backed counter keyed by IP hash as the inner one. Never claim
+  a limit is enforced when it is only enforced per isolate.
 ```
 
 ---
@@ -1949,7 +2013,7 @@ Create src/app/[locale]/(frontend)/checkout/confirmation/page.tsx
 ```
 Create email templates using React Email (works with Resend):
 
-npm install @react-email/components
+pnpm add @react-email/components
 
 Create src/emails/OrderConfirmation.tsx:
 - Clean, branded HTML email
@@ -2243,36 +2307,52 @@ Improve the pricing tiers UI in the Products collection admin:
 **Instructions for agent:**
 
 ```
-1. Image optimization:
-   - Use next/image everywhere with appropriate sizes prop
-   - Set formats: ['webp', 'avif'] in next.config.ts images config
-   - Lazy load images below the fold (default next/image behavior)
-   - Priority load above-the-fold hero and first product images
+1. Image optimization — Cloudflare, not Next's optimizer:
+   - Next's built-in image optimizer needs sharp and CANNOT run on Workers.
+     Do not set images.formats and expect it to work.
+   - Instead register a custom loader in next.config.ts:
+       images: { loader: 'custom', loaderFile: './src/lib/imageLoader.ts' }
+   - The loader emits:
+       /cdn-cgi/image/width=<w>,quality=<q>,format=auto,fit=scale-down/<src>
+     format=auto gives AVIF/WebP by Accept header, cached at the edge.
+   - The loader MUST pass the src through untouched when
+     NEXT_PUBLIC_CF_IMAGES !== 'true' (workers.dev has no zone, so
+     /cdn-cgi/image 404s there). Without this fallback, every image on the
+     pre-domain deployment breaks.
+   - Keep sizes props accurate — they drive the width the loader requests.
+   - Priority on the hero and the first product image only.
 
 2. Font optimization:
    - Use next/font for Inter (automatic subsetting and self-hosting)
    - Display: 'swap' for no FOIT
 
-3. Bundle optimization:
-   - Verify tree-shaking works (check bundle analyzer)
-   - Dynamic import for heavy components (e.g., cart drawer, modals)
-   - Use React Server Components by default — client components only when needed
+3. Bundle optimization (doubles as staying under the 10 MB Worker cap):
+   - Dynamic import for heavy client components (cart drawer, dialogs)
+   - React Server Components by default — client components only when needed
+   - Import icons individually from lucide-react; never `import * as`
+   - Re-check `.open-next/worker.js` size after this phase
 
 4. Caching strategy:
-   - Product pages: ISR with revalidation (revalidate: 3600 — 1 hour)
-   - Category pages: ISR (revalidate: 3600)
-   - Homepage: ISR (revalidate: 1800 — 30 minutes)
-   - Static pages: SSG (no revalidation unless CMS webhook triggers it)
-   - On-demand revalidation: Set up Payload afterChange hooks to call
-     revalidatePath() or revalidateTag() when content changes in admin
+   - ISR on Workers requires an incremental cache binding. Add an R2 bucket
+     bound as NEXT_INC_CACHE_R2_BUCKET in wrangler.jsonc and enable it in
+     open-next.config.ts — WITHOUT it, `revalidate` silently degrades to
+     dynamic rendering on every request and the store gets slow and expensive.
+   - Product pages: revalidate 3600. Category pages: 3600. Homepage: 1800.
+   - Legal/static pages: fully static.
+   - On-demand revalidation from Payload afterChange hooks via revalidateTag().
+     Tag by collection and by slug so an edit to one product does not flush
+     the whole catalogue.
+   - Put Cloudflare Cache Rules in front of storefront GETs; bypass cache for
+     /admin, /api, /checkout and anything carrying a Payload auth cookie.
 
-5. Database query optimization:
-   - Select only needed fields in Payload queries (use 'select' option)
-   - Use depth: 0 for list views, depth: 1-2 only when relationships are needed
-   - Add database indexes on frequently queried fields:
-     products.slug, products.isActive, products.category
-     orders.status, orders.orderNumber
-     categories.slug
+5. Database query optimization (D1 specifics):
+   - Select only needed fields (`select` option); depth: 0 for list views
+   - Index: products.slug, products.isActive, products.category,
+     orders.status, orders.orderNumber, categories.slug
+   - D1 bills by rows read. An unindexed scan on the product list is not just
+     slow, it is metered — check `wrangler d1 insights` after launch.
+   - Enable read replicas (`readReplicas: 'first-primary'`) so storefront reads
+     are served near the visitor while writes stay on the primary.
 ```
 
 ---
@@ -2358,110 +2438,114 @@ Improve the pricing tiers UI in the Products collection admin:
 
 ---
 
-#### Commit 10.1: Vercel Deployment Configuration
+#### Commit 10.1: Cloudflare Deployment Configuration
 
 **Instructions for agent:**
 
 ```
-1. Install Vercel Blob storage adapter for Payload:
-   npm install @payloadcms/storage-vercel-blob
+Storage and database adapters are already wired from Phase 0 — on this stack
+deployment is not a separate integration step, it is the same bindings pointed
+at real resources. This commit is about making that repeatable.
 
-2. Configure Payload to use Vercel Blob for media uploads:
-   In payload.config.ts, add the storage adapter:
+1. Build pipeline (package.json):
+   "build"            : "payload build"
+   "preview"          : "opennextjs-cloudflare build && opennextjs-cloudflare preview"
+   "deploy:database"  : "cross-env NODE_ENV=production PAYLOAD_SECRET=ignore payload migrate"
+   "deploy:app"       : "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
+   "deploy"           : "pnpm deploy:database && pnpm deploy:app"
 
-   import { vercelBlobStorage } from '@payloadcms/storage-vercel-blob'
+   ORDER MATTERS: migrations run BEFORE the new Worker goes live, so the
+   schema is never behind the code. Migrations must therefore be
+   backwards-compatible with the currently-deployed Worker — additive columns,
+   no destructive renames in a single step.
 
-   plugins: [
-     vercelBlobStorage({
-       collections: { media: true },
-       token: process.env.BLOB_READ_WRITE_TOKEN,
-     }),
-   ]
+2. Health check: src/app/api/health/route.ts
+   Returns { status, timestamp } and a cheap D1 round-trip (SELECT 1).
+   Used by uptime monitoring and to confirm the binding after deploy.
 
-   Add BLOB_READ_WRITE_TOKEN to .env.example
+3. next.config.ts for the Worker runtime:
+   - serverExternalPackages: ['jose', 'pg-cloudflare']
+   - images.remotePatterns: the R2 custom domain
+   - custom image loader for /cdn-cgi/image (see Phase 8)
 
-3. Create vercel.json (minimal — Next.js auto-detection handles most):
-   {
-     "framework": "nextjs",
-     "buildCommand": "npx payload migrate && npm run build",
-     "env": {
-       "PAYLOAD_CONFIG_PATH": "src/payload.config.ts"
-     }
-   }
-
-   The buildCommand runs Payload migrations before building Next.js.
-
-4. Configure next.config.ts for production:
-   - Set images.remotePatterns to allow Vercel Blob URLs
-   - Set serverExternalPackages if any native modules need it
-   - Enable experimental.reactCompiler if available and stable
-
-5. Create a health check API route:
-   src/app/api/health/route.ts
-   - Returns 200 OK with { status: 'ok', timestamp: new Date() }
-   - Optionally checks DB connectivity
-
-6. Update .env.example with all production-required variables:
-   DATABASE_URL=              # Neon Postgres connection string
-   PAYLOAD_SECRET=            # min 32 chars, unique per environment
-   BLOB_READ_WRITE_TOKEN=     # Vercel Blob storage token
-   RESEND_API_KEY=            # Resend email API key
-   NEXT_PUBLIC_SITE_URL=      # https://kctrading.bg or similar
-   INITIAL_ADMIN_EMAIL=       # First admin user email
-   INITIAL_ADMIN_PASSWORD=    # First admin user password (change after first login)
-
-7. Deployment steps (manual — agent documents these for the human):
-   a. Push repo to GitHub
-   b. Go to vercel.com → New Project → Import from GitHub
-   c. Vercel auto-detects Next.js framework
-   d. Add all environment variables from .env.example
-   e. For DATABASE_URL: Create a Neon project, copy the connection string
-   f. For BLOB_READ_WRITE_TOKEN: Vercel creates this when you add Blob storage
-      (Vercel Dashboard → Storage → Create → Blob)
-   g. Deploy — first deploy runs migrations and creates DB tables
-   h. Visit /admin → create the first admin user
-
-8. Configure Vercel project settings:
-   - Root directory: ./ (default)
-   - Build command: auto-detected
-   - Output directory: auto-detected
-   - Node.js version: 22.x
-   - Environment variables: set per environment (Production, Preview, Development)
+4. Verify the bundle before every deploy:
+   ls -la .open-next/worker.js   → must be under 10 MB compressed
 ```
 
 ---
 
-#### Commit 10.2: Preview Deployments & Branch Protection
+#### Commit 10.2: Provisioning runbook (human-executed)
+
+**Instructions for agent:** document these; do NOT attempt them without credentials.
+
+```
+a. wrangler login
+
+b. Create resources:
+   wrangler d1 create kc-commerce
+   wrangler r2 bucket create kc-commerce-media
+   → paste the returned database_id into wrangler.jsonc
+
+c. Set secrets (never in the repo):
+   wrangler secret put PAYLOAD_SECRET      # openssl rand -hex 32
+   wrangler secret put RESEND_API_KEY
+   wrangler secret put CRON_SECRET
+
+d. Enable the Workers Paid plan ($5/mo) — REQUIRED, the bundle exceeds
+   the 3 MB free-tier limit.
+
+e. First deploy:
+   pnpm deploy
+
+f. Visit https://<worker>.workers.dev/admin and create the first admin user.
+   Do this IMMEDIATELY after the first deploy — until an admin exists, the
+   Payload create-first-user route is open by design.
+
+g. Custom domain:
+   - Add the domain to Cloudflare (nameservers or partial CNAME setup)
+   - Workers → your worker → Settings → Domains & Routes → add kctrading.bg
+   - SSL/TLS mode: Full (strict)
+   - Enable "Always Use HTTPS" and HSTS at the zone level
+   - Attach a custom domain to the R2 bucket for media (media.kctrading.bg)
+   - Turn on Image Transformations for the zone, then set
+     NEXT_PUBLIC_CF_IMAGES=true so the next/image loader activates
+
+h. Security posture in the dashboard:
+   - WAF: enable the Cloudflare Managed Ruleset
+   - Add a rate-limiting rule on /admin/login and the checkout action
+     (defence in depth — the app rate-limits too)
+   - Bot Fight Mode on
+   - Scrape Shield on
+```
+
+---
+
+#### Commit 10.3: Staging environment & CI
 
 **Instructions for agent:**
 
 ```
-1. Vercel automatically creates preview deployments for every push to
-   non-main branches. This means every phase branch gets its own preview URL.
-   No configuration needed — this is built into Vercel.
+1. wrangler.jsonc already declares a "staging" env with its own D1 + R2.
+   Deploy it with:  CLOUDFLARE_ENV=staging pnpm deploy
+   Staging never shares a database with production.
 
-2. Configure preview environment variables:
-   - Use a SEPARATE Neon database branch for preview deployments
-     (Neon supports database branching — create a 'preview' branch)
-   - Set DATABASE_URL for Preview environment to the preview branch URL
-   - This prevents preview deploys from corrupting production data
+2. GitHub Actions (.github/workflows/):
+   - On pull request: install, lint, typecheck, build. No deploy.
+     This is the guardrail that replaces the missing test suite — a PR that
+     does not type-check cannot merge.
+   - On push to main: build + deploy to production, using repository secret
+     CLOUDFLARE_API_TOKEN (scopes: Workers Scripts:Edit, D1:Edit, R2:Edit).
+   - The token is a repository secret. It is NOT in the repo and NOT in
+     wrangler.jsonc.
 
-3. Set up domain:
-   - Add custom domain in Vercel Dashboard → Domains
-   - Point DNS to Vercel (either Vercel DNS or external like Cloudflare)
-   - Vercel auto-provisions SSL certificate
-   - Configure www redirect (www.kctrading.bg → kctrading.bg or vice versa)
-
-4. Security settings in Vercel Dashboard:
-   - Enable DDoS protection (included in all plans)
-   - Enable Web Application Firewall (basic included in Pro)
-   - Set Function Max Duration: 30s (sufficient for all operations)
-   - Enable Speed Insights (included in Pro)
+3. Rollback: `wrangler rollback` reverts the Worker to the previous version
+   in seconds. Note that it does NOT roll back D1 migrations — this is exactly
+   why migrations must be additive and backwards-compatible.
 ```
 
 ---
 
-#### Commit 10.3: Pre-Launch Checklist
+#### Commit 10.4: Pre-Launch Checklist
 
 **Instructions for agent:**
 
@@ -2553,15 +2637,15 @@ These are NOT part of the MVP but should be architected to be easy to add:
 
 ## Agentic Development Notes
 
-### For the Hermes Agent + Qwen 3.6 27B:
+### For the coding agent:
 
 1. **Follow the branching strategy.** Create a `phase/N-name` branch for each phase. Make all commits within that branch. Merge to `main` only after the full phase builds cleanly. See the "Git Branching & Commit Strategy" section above for exact commands.
 
 2. **Work commit by commit.** Each commit described above is an atomic unit of work. Do not skip ahead or combine commits unless explicitly told to.
 
-3. **Verify before committing.** After implementing each commit's instructions, run `npm run build` and `npm run dev` to verify nothing is broken. If the build fails, fix it before committing. Every commit must leave the project in a buildable state.
+3. **Verify before committing.** After implementing each commit's instructions, run `pnpm build` and `pnpm dev` to verify nothing is broken. If the build fails, fix it before committing. Every commit must leave the project in a buildable state. With no test suite, a green build is the only automated signal there is — treat a build failure as a blocking defect, never as noise to work around.
 
-4. **Verify before merging.** After all commits in a phase are done, run `npm run build` one final time. Only then merge the phase branch into `main`.
+4. **Verify before merging.** After all commits in a phase are done, run `pnpm build` one final time. Only then merge the phase branch into `main`.
 
 5. **Follow the security rules.** Re-read the Security Rules section before implementing any commit that handles user input (especially Phase 5 — checkout).
 
@@ -2574,6 +2658,10 @@ These are NOT part of the MVP but should be architected to be easy to add:
 9. **Server Actions for mutations.** All form submissions (checkout, contact, withdrawal) use Next.js Server Actions, not API routes.
 
 10. **Test as you go.** After implementing each feature, manually test it in the browser. Check both BG and EN locales. Check mobile viewport (375px width).
+
+10a. **Respect the platform constraints.** Before writing anything that touches images, transactions, GraphQL, background work, or large dependencies, re-read the "Platform Constraints" table near the top. Most Payload/Next examples on the internet assume a Node server; several of them simply do not work on Workers.
+
+10b. **Never hardcode a colour.** The palette is not signed off. Semantic tokens only — see Commit 0.6.
 
 11. **Commit messages follow Conventional Commits** (see branching section above for format and examples).
 
