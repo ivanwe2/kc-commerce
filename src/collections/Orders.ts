@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { isAdmin, isAdminOrEditor, isAdminOrEditorField } from '@/access'
+import { sendShippingNotification } from './hooks/orderNotifications'
 
 export const SHIPPING_METHODS = [
   'econt_office',
@@ -310,6 +311,7 @@ export const Orders: CollectionConfig = {
   ],
 
   hooks: {
+    afterChange: [sendShippingNotification],
     beforeChange: [
       async ({ data, req, operation, originalDoc }) => {
         if (operation !== 'update' || !originalDoc) return data

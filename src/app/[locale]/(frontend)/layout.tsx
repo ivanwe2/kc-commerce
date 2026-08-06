@@ -37,12 +37,33 @@ export async function generateMetadata({
   const { locale } = await params
   const t = await getTranslations({ locale, namespace: 'common' })
 
+  const base = (process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000').replace(/\/$/, '')
+
   return {
+    metadataBase: new URL(base),
     title: {
       default: 'KC Trading',
       template: '%s | KC Trading',
     },
     description: t('searchPlaceholder'),
+    /**
+     * hreflang. Tells search engines the Bulgarian and English pages are the
+     * same content in two languages rather than duplicates competing with each
+     * other. x-default points at Bulgarian, the primary language.
+     */
+    alternates: {
+      canonical: locale === 'bg' ? base : `${base}/en`,
+      languages: {
+        bg: base,
+        en: `${base}/en`,
+        'x-default': base,
+      },
+    },
+    openGraph: {
+      siteName: 'KC Trading',
+      locale: locale === 'bg' ? 'bg_BG' : 'en_GB',
+      type: 'website',
+    },
   }
 }
 

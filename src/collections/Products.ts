@@ -4,6 +4,7 @@ import { activeOrAuthenticated, isAdminOrEditor } from '@/access'
 import { roundMoney } from '@/lib/money'
 import { validatePricingTiers, type PricingTier } from '@/lib/pricing'
 import { slugify } from '@/lib/slugify'
+import { revalidateProduct, revalidateProductDelete } from './hooks/revalidate'
 
 export const Products: CollectionConfig = {
   slug: 'products',
@@ -219,6 +220,8 @@ export const Products: CollectionConfig = {
   ],
 
   hooks: {
+    afterChange: [revalidateProduct],
+    afterDelete: [revalidateProductDelete],
     beforeValidate: [
       async ({ data, req, operation, originalDoc }) => {
         if (!data) return data

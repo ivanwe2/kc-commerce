@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 import { isAdminOrEditor, publishedOrAuthenticated } from '@/access'
 import { slugify } from '@/lib/slugify'
+import { revalidatePage } from './hooks/revalidate'
 
 /**
  * CMS-managed static pages (about, shipping info, and the body copy of the
@@ -64,6 +65,7 @@ export const Pages: CollectionConfig = {
   ],
 
   hooks: {
+    afterChange: [revalidatePage],
     beforeValidate: [
       ({ data }) => {
         if (!data) return data

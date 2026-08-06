@@ -1,6 +1,7 @@
 import type { GlobalConfig } from 'payload'
 
 import { anyone, isAdmin } from '@/access'
+import { revalidateSettings } from '@/collections/hooks/revalidate'
 
 export const Settings: GlobalConfig = {
   slug: 'settings',
@@ -13,6 +14,10 @@ export const Settings: GlobalConfig = {
 
   admin: {
     group: 'Configuration',
+  },
+
+  hooks: {
+    afterChange: [revalidateSettings],
   },
 
   fields: [
