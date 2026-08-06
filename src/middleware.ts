@@ -1,7 +1,10 @@
+import createIntlMiddleware from 'next-intl/middleware'
 import { NextResponse, type NextRequest } from 'next/server'
 
+import { routing } from '@/i18n/routing'
+
 /**
- * Security headers.
+ * Locale routing plus security headers.
  *
  * NOTE: this file is deliberately `middleware.ts` and NOT the `proxy.ts` that
  * Next 16 now prefers, despite the deprecation warning printed on every build.
@@ -19,8 +22,7 @@ import { NextResponse, type NextRequest } from 'next/server'
  * https://github.com/cloudflare/workers-sdk/issues/13755
  *
  * This runs on every matched request inside the Worker's CPU budget, so it is
- * deliberately allocation-light: no parsing, no crypto, no awaits. Locale
- * routing joins this file in Phase 2.
+ * deliberately allocation-light: no parsing, no crypto, no awaits.
  */
 
 const BASE_HEADERS: ReadonlyArray<readonly [string, string]> = [
@@ -38,7 +40,7 @@ const BASE_HEADERS: ReadonlyArray<readonly [string, string]> = [
  *
  * 'unsafe-inline' on script-src is required by Next's inline bootstrap and
  * hydration payload. Tightening this to a nonce is a worthwhile follow-up but
- * needs the streaming-friendly nonce plumbing, so it is not attempted here.
+ * needs streaming-friendly nonce plumbing, so it is not attempted here.
  *
  * img-src permits https: because product media may be served from an R2 custom
  * domain that is not known at build time.
@@ -56,9 +58,17 @@ const STOREFRONT_CSP = [
   "frame-ancestors 'none'",
 ].join('; ')
 
+const intlMiddleware = createIntlMiddleware(routing)
+
 export function middleware(request: NextRequest): NextResponse {
-  const response = NextResponse.next()
   const { pathname } = request.nextUrl
+
+  // Payload owns /admin and /api entirely. Locale routing must not touch them —
+  // rewriting /admin to /bg/admin breaks the admin panel — and the storefront
+  // CSP would block the inline scripts and styles Payload's UI depends on.
+  const isPayloadRoute = pathname.startsWith('/admin') || pathname.startsWith('/api')
+
+  const response = isPayloadRoute ? NextResponse.next() : intlMiddleware(request)
 
   for (const [key, value] of BASE_HEADERS) {
     response.headers.set(key, value)
@@ -68,16 +78,9 @@ export function middleware(request: NextRequest): NextResponse {
   // this header with different max-age values is a real and confusing failure
   // mode; keep exactly one owner.
   if (process.env.NODE_ENV === 'production') {
-    response.headers.set(
-      'Strict-Transport-Security',
-      'max-age=63072000; includeSubDomains; preload',
-    )
+    response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload')
   }
 
-  // Payload's admin panel needs inline scripts, styles, workers and blob URLs
-  // that a storefront-grade CSP forbids. Applying the storefront policy to
-  // /admin does not harden it — it breaks it.
-  const isPayloadRoute = pathname.startsWith('/admin') || pathname.startsWith('/api')
   if (!isPayloadRoute) {
     response.headers.set('Content-Security-Policy', STOREFRONT_CSP)
   }
