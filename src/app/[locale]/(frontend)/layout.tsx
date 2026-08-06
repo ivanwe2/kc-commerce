@@ -5,7 +5,10 @@ import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { notFound } from 'next/navigation'
 import React from 'react'
 
+import { Footer } from '@/components/layout/Footer'
+import { Header } from '@/components/layout/Header'
 import { routing } from '@/i18n/routing'
+import type { StorefrontLocale } from '@/lib/payload'
 import '@/styles/globals.css'
 
 // Self-hosted and subset by next/font. Cyrillic is included because the primary
@@ -59,10 +62,25 @@ export default async function LocaleLayout({
   // platform means paying to re-render identical markup.
   setRequestLocale(locale)
 
+  const nav = await getTranslations('nav')
+  const skip = nav('skipToContent')
+
   return (
     <html lang={locale} className={inter.variable}>
-      <body>
-        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+      <body className="flex min-h-screen flex-col">
+        <NextIntlClientProvider>
+          <a
+            href="#main"
+            className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-[--radius-control] focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
+          >
+            {skip}
+          </a>
+          <Header locale={locale as StorefrontLocale} />
+          <div id="main" className="flex-1">
+            {children}
+          </div>
+          <Footer locale={locale as StorefrontLocale} />
+        </NextIntlClientProvider>
       </body>
     </html>
   )
