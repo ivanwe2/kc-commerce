@@ -1,26 +1,31 @@
-build
-dist / media
-node_modules
-.DS_Store
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# builds
+.next/
+.open-next/
+out/
+build/
+dist/
+*.tsbuildinfo
+
+# cloudflare
+.wrangler/
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+
+# env
 .env
-.next
-next-env.d.ts
-.vercel
+.env.*
+!.env.example
 
-# Payload default media upload directory
-public/media/
-
-public/robots.txt
-public/sitemap*.xml
-
-# Coverage
+# misc
+*.log
+npm-debug.log*
+.DS_Store
 coverage/
-
-# Playwright
-/test-results/
-/playwright-report/
-/blob-report/
-/playwright/.cache/
-
-# Docker volumes (do not commit)
-pgdata/
+.vscode/
+.idea/

@@ -1,0 +1,94 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "main": ".open-next/worker.js",
+  "name": "kc-commerce",
+  "compatibility_date": "2026-08-06",
+  "compatibility_flags": [
+    // Node.js API surface — Payload requires it.
+    "nodejs_compat",
+    // Outbound fetch may only reach public addresses. This is Workers' built-in
+    // SSRF protection and the reason `skipSafeFetch: true` is safe here.
+    "global_fetch_strictly_public",
+  ],
+
+  // Static assets are served by Cloudflare's asset store, NOT by the Worker.
+  // They are free and do not count as Worker requests.
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS",
+  },
+
+  // --- Database -------------------------------------------------------------
+  // `database_id` is a placeholder until someone runs `wrangler d1 create kc-commerce`.
+  // Local development does NOT need a real id: Miniflare keys the local SQLite
+  // file off `database_name`. Do not let a placeholder id here make you think
+  // local dev is broken — it is not.
+  "d1_databases": [
+    {
+      "binding": "D1",
+      "database_name": "kc-commerce",
+      "database_id": "REPLACE_WITH_ID_FROM_WRANGLER_D1_CREATE",
+      "remote": true,
+    },
+  ],
+
+  // --- Object storage -------------------------------------------------------
+  // R2 holds uploaded media. Zero egress fees, and the bucket stays private —
+  // media is served through the Worker or a read-only custom domain.
+  "r2_buckets": [
+    {
+      "binding": "R2",
+      "bucket_name": "kc-commerce-media",
+    },
+    // Phase 8 will add the incremental cache bucket here. Without it, `revalidate`
+    // silently degrades to fully dynamic rendering on every request.
+    // { "binding": "NEXT_INC_CACHE_R2_BUCKET", "bucket_name": "kc-commerce-cache" },
+  ],
+
+  // --- Public, non-secret configuration ------------------------------------
+  // Secrets NEVER go here — this file is committed. Use `wrangler secret put`.
+  "vars": {
+    "NEXT_PUBLIC_SITE_URL": "https://kc-commerce.workers.dev",
+    "NEXT_PUBLIC_DEFAULT_LOCALE": "bg",
+    "NEXT_PUBLIC_SUPPORTED_LOCALES": "bg,en",
+    // Cloudflare Image Transformations require a zone. They do not work on
+    // workers.dev, so this stays "false" until a custom domain is attached.
+    "NEXT_PUBLIC_CF_IMAGES": "false",
+  },
+
+  "observability": {
+    "enabled": true,
+  },
+
+  // --- Staging --------------------------------------------------------------
+  // Deploy with: CLOUDFLARE_ENV=staging pnpm deploy
+  // Separate database and bucket: staging must never touch production data.
+  "env": {
+    "staging": {
+      "name": "kc-commerce-staging",
+      "d1_databases": [
+        {
+          "binding": "D1",
+          "database_name": "kc-commerce-staging",
+          "database_id": "REPLACE_WITH_STAGING_ID",
+          "remote": true,
+        },
+      ],
+      "r2_buckets": [
+        {
+          "binding": "R2",
+          "bucket_name": "kc-commerce-media-staging",
+        },
+      ],
+      "vars": {
+        "NEXT_PUBLIC_SITE_URL": "https://kc-commerce-staging.workers.dev",
+        "NEXT_PUBLIC_DEFAULT_LOCALE": "bg",
+        "NEXT_PUBLIC_SUPPORTED_LOCALES": "bg,en",
+        "NEXT_PUBLIC_CF_IMAGES": "false",
+      },
+      "observability": {
+        "enabled": true,
+      },
+    },
+  },
+}

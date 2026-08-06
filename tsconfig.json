@@ -3,7 +3,7 @@
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "forceConsistentCasingInFileNames": true,
-    "baseUrl": ".",
+    "noUnusedLocals": true,
     "esModuleInterop": true,
     "target": "ES2022",
     "lib": [
@@ -30,9 +30,6 @@
       "@payload-config": [
         "./src/payload.config.ts"
       ],
-      "react": [
-        "./node_modules/@types/react"
-      ],
       "@/*": [
         "./src/*"
       ]
@@ -41,14 +38,15 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
-    ".next/types/**/*.ts",
-    "redirects.js",
     "next-env.d.ts",
-    "next.config.js",
-    "next-sitemap.config.cjs",
+    "cloudflare-env.d.ts",
+    ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    ".next",
+    ".open-next",
+    ".wrangler"
   ]
 }

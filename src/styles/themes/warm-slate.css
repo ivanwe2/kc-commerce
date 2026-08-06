@@ -1,0 +1,90 @@
+/* =============================================================================
+ * ALTERNATIVE THEME — Teal on warm neutral
+ * =============================================================================
+ * A drop-in replacement for theme.css, provided to prove the swap actually
+ * works end to end rather than being an aspiration in a README.
+ *
+ * Usage: in globals.css, import this file instead of ./theme.css.
+ *
+ * Note that ONLY the ramp changed. Every role binding below is identical to
+ * theme.css — which is exactly the property that makes rebranding cheap.
+ * ========================================================================== */
+
+:root {
+  /* --- 1. RAMP ------------------------------------------------------------ */
+
+  /* Brand — Teal */
+  --ramp-brand-50: #f0fdfa;
+  --ramp-brand-100: #ccfbf1;
+  --ramp-brand-500: #14b8a6;
+  --ramp-brand-700: #0f766e;
+  --ramp-brand-800: #115e59;
+  --ramp-brand-900: #134e4a;
+
+  /* Neutral — Stone (warm) */
+  --ramp-neutral-0: #ffffff;
+  --ramp-neutral-50: #fafaf9;
+  --ramp-neutral-100: #f5f5f4;
+  --ramp-neutral-200: #e7e5e4;
+  --ramp-neutral-400: #a8a29e;
+  --ramp-neutral-600: #57534e;
+  --ramp-neutral-700: #44403c;
+  --ramp-neutral-900: #1c1917;
+
+  /* Status */
+  --ramp-success-100: #dcfce7;
+  --ramp-success-600: #16a34a;
+  --ramp-success-800: #166534;
+  --ramp-warning-100: #fef3c7;
+  --ramp-warning-600: #d97706;
+  --ramp-warning-800: #92400e;
+  --ramp-danger-50: #fef2f2;
+  --ramp-danger-100: #fee2e2;
+  --ramp-danger-600: #dc2626;
+  --ramp-danger-800: #991b1b;
+
+  /* --- 2. ROLES (identical bindings to theme.css) ------------------------- */
+
+  --color-primary: var(--ramp-brand-800);
+  --color-primary-hover: var(--ramp-brand-900);
+  --color-primary-subtle: var(--ramp-brand-100);
+  --color-primary-foreground: var(--ramp-neutral-0);
+
+  --color-background: var(--ramp-neutral-0);
+  --color-surface: var(--ramp-neutral-50);
+  --color-surface-alt: var(--ramp-neutral-100);
+
+  --color-heading: var(--ramp-neutral-900);
+  --color-body: var(--ramp-neutral-700);
+  --color-muted: var(--ramp-neutral-400);
+  --color-secondary: var(--ramp-neutral-600);
+
+  --color-border: var(--ramp-neutral-200);
+  --color-border-strong: var(--ramp-neutral-400);
+  --color-ring: var(--ramp-brand-800);
+
+  --color-price: var(--ramp-neutral-900);
+  --color-price-old: var(--ramp-neutral-400);
+  --color-price-sale: var(--ramp-danger-600);
+
+  --color-success: var(--ramp-success-600);
+  --color-success-subtle: var(--ramp-success-100);
+  --color-success-foreground: var(--ramp-success-800);
+  --color-warning: var(--ramp-warning-600);
+  --color-warning-subtle: var(--ramp-warning-100);
+  --color-warning-foreground: var(--ramp-warning-800);
+  --color-danger: var(--ramp-danger-600);
+  --color-danger-subtle: var(--ramp-danger-100);
+  --color-danger-foreground: var(--ramp-danger-800);
+
+  --radius-control: 0.375rem;
+  --radius-surface: 0.5rem;
+
+  --shadow-raised: 0 1px 2px 0 rgb(28 25 23 / 0.05);
+  --shadow-floating: 0 4px 6px -1px rgb(28 25 23 / 0.1), 0 2px 4px -2px rgb(28 25 23 / 0.1);
+  --shadow-overlay: 0 10px 15px -3px rgb(28 25 23 / 0.1), 0 4px 6px -4px rgb(28 25 23 / 0.1);
+
+  --layout-max: 80rem;
+  --header-height: 4rem;
+  --transition-interactive: 150ms;
+}
