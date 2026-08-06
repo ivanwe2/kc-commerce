@@ -4,7 +4,7 @@ import { useTranslations } from 'next-intl'
 import { useSearchParams } from 'next/navigation'
 import { useRouter } from '@/i18n/routing'
 import { usePathname } from '@/i18n/routing'
-import { useTransition } from 'react'
+import { useOptimistic, useTransition } from 'react'
 
 import { buttonVariants } from '@/components/ui/Button'
 import type { Category } from '@/payload-types'
@@ -24,6 +24,28 @@ export function ProductFilters({ categories }: { categories: Category[] }) {
   const searchParams = useSearchParams()
   const [isPending, startTransition] = useTransition()
 
+  /**
+   * Optimistic filter state.
+   *
+   * The controls are driven by the URL, which only updates after the server
+   * round-trip. Without this, ticking "in stock only" leaves the checkbox
+   * visibly unticked until the new page arrives — it reads as a broken control,
+   * and users click it again. Playwright caught exactly this: `.check()` failed
+   * because the checkbox did not reflect its own click.
+   *
+   * The optimistic value shows the intent immediately and is reconciled when the
+   * real searchParams land.
+   */
+  const [optimisticParams, applyOptimistic] = useOptimistic(
+    searchParams,
+    (current: URLSearchParams, update: { key: string; value: string | null }) => {
+      const next = new URLSearchParams(current.toString())
+      if (update.value === null || update.value === '') next.delete(update.key)
+      else next.set(update.key, update.value)
+      return next
+    },
+  )
+
   const update = (key: string, value: string | null) => {
     const params = new URLSearchParams(searchParams.toString())
 
@@ -36,6 +58,7 @@ export function ProductFilters({ categories }: { categories: Category[] }) {
 
     const query = params.toString()
     startTransition(() => {
+      applyOptimistic({ key, value })
       router.push(query ? `${pathname}?${query}` : pathname)
     })
   }
@@ -48,7 +71,7 @@ export function ProductFilters({ categories }: { categories: Category[] }) {
     <aside
       aria-label={t('title')}
       data-pending={isPending ? '' : undefined}
-      className="h-fit space-y-6 rounded-[--radius-surface] border border-border-default bg-surface p-4 lg:sticky lg:top-20"
+      className="h-fit space-y-6 rounded-[--radius-surface] border border-border-default bg-surface p-4 transition-opacity data-pending:opacity-60 lg:sticky lg:top-20"
     >
       <div>
         <label htmlFor="filter-search" className="mb-1.5 block text-sm font-medium text-body">
@@ -72,7 +95,7 @@ export function ProductFilters({ categories }: { categories: Category[] }) {
         </label>
         <select
           id="filter-category"
-          value={searchParams.get('category') ?? ''}
+          value={optimisticParams.get('category') ?? ''}
           onChange={(event) => update('category', event.target.value || null)}
           className="w-full rounded-[--radius-control] border border-border-default bg-background px-3 py-2 text-base focus:border-primary focus:outline-none"
         >
@@ -116,7 +139,7 @@ export function ProductFilters({ categories }: { categories: Category[] }) {
         <input
           id="filter-stock"
           type="checkbox"
-          checked={searchParams.get('inStock') === '1'}
+          checked={optimisticParams.get('inStock') === '1'}
           onChange={(event) => update('inStock', event.target.checked ? '1' : null)}
           className="size-4 rounded border-border-strong text-primary focus:ring-primary/20"
         />
@@ -131,7 +154,7 @@ export function ProductFilters({ categories }: { categories: Category[] }) {
         </label>
         <select
           id="filter-sort"
-          value={searchParams.get('sort') ?? 'newest'}
+          value={optimisticParams.get('sort') ?? 'newest'}
           onChange={(event) => update('sort', event.target.value)}
           className="w-full rounded-[--radius-control] border border-border-default bg-background px-3 py-2 text-base focus:border-primary focus:outline-none"
         >

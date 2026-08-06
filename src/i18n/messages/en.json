@@ -47,7 +47,8 @@
     "featured": "Featured products",
     "noProducts": "No products found",
     "productCount": "Products ({count})",
-    "addedToCart": "Added to cart"
+    "addedToCart": "Added to cart",
+    "saving": "Saving"
   },
   "units": {
     "piece": "pcs",
