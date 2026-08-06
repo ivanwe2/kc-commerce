@@ -5,6 +5,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { notFound } from 'next/navigation'
 import React from 'react'
 
+import { CartProvider } from '@/components/cart/CartProvider'
 import { Footer } from '@/components/layout/Footer'
 import { Header } from '@/components/layout/Header'
 import { routing } from '@/i18n/routing'
@@ -69,6 +70,7 @@ export default async function LocaleLayout({
     <html lang={locale} className={inter.variable}>
       <body className="flex min-h-screen flex-col">
         <NextIntlClientProvider>
+          <CartProvider />
           <a
             href="#main"
             className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-[--radius-control] focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"

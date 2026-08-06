@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 
+import { AddToCartButton } from '@/components/product/AddToCartButton'
 import { ProductCard } from '@/components/product/ProductCard'
 import { ProductGallery } from '@/components/product/ProductGallery'
 import { PricingTierTable } from '@/components/product/PricingTierTable'
@@ -88,6 +89,10 @@ export default async function ProductPage({
   const tiers = (product.pricingTiers ?? []) as PricingTier[]
   const stock = product.stock ?? 0
   const category = typeof product.category === 'object' ? product.category : null
+
+  const firstImage = product.images?.[0]?.image
+  const firstImageUrl =
+    firstImage && typeof firstImage === 'object' ? (firstImage.url ?? null) : null
 
   // Structured data. Priced from basePrice with lowPrice reflecting bulk tiers,
   // so search results do not advertise a price the customer cannot actually get
@@ -198,9 +203,21 @@ export default async function ProductPage({
             </p>
           )}
 
-          {/* Add-to-cart arrives in Phase 4, once the cart store exists. */}
-          <div className="mt-6 rounded-[--radius-surface] border border-dashed border-border-strong p-4 text-sm text-muted">
-            {t('addToCart')} — Phase 4
+          <div className="mt-6">
+            <AddToCartButton
+              disabled={stock <= 0}
+              item={{
+                productId: product.id,
+                slug: product.slug ?? '',
+                title: product.title,
+                image: firstImageUrl,
+                basePrice: product.basePrice,
+                maxStock: stock,
+                minOrderQuantity: product.minOrderQuantity ?? 1,
+                unit: product.unit ?? 'piece',
+                pricingTiers: tiers,
+              }}
+            />
           </div>
         </div>
       </div>
