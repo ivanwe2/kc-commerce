@@ -2,6 +2,7 @@ import { Menu, Search } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
+import { CartIcon } from '@/components/cart/CartIcon'
 import { MobileNav } from '@/components/layout/MobileNav'
 import { Link } from '@/i18n/routing'
 import { getSettings, type StorefrontLocale } from '@/lib/payload'
@@ -49,6 +50,8 @@ export async function Header({ locale }: { locale: StorefrontLocale }) {
           >
             <Search className="size-5" aria-hidden="true" />
           </Link>
+
+          <CartIcon />
 
           <LanguageSwitcher />
         </div>
