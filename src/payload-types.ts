@@ -67,8 +67,13 @@ export interface Config {
   };
   blocks: {};
   collections: {
-    users: User;
+    products: Product;
+    categories: Category;
+    orders: Order;
+    pages: Page;
     media: Media;
+    users: User;
+    counters: Counter;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -76,8 +81,13 @@ export interface Config {
   };
   collectionsJoins: {};
   collectionsSelect: {
-    users: UsersSelect<false> | UsersSelect<true>;
+    products: ProductsSelect<false> | ProductsSelect<true>;
+    categories: CategoriesSelect<false> | CategoriesSelect<true>;
+    orders: OrdersSelect<false> | OrdersSelect<true>;
+    pages: PagesSelect<false> | PagesSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
+    users: UsersSelect<false> | UsersSelect<true>;
+    counters: CountersSelect<false> | CountersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -86,10 +96,14 @@ export interface Config {
   db: {
     defaultIDType: number;
   };
-  fallbackLocale: null;
-  globals: {};
-  globalsSelect: {};
-  locale: null;
+  fallbackLocale: ('false' | 'none' | 'null') | false | null | ('bg' | 'en') | ('bg' | 'en')[];
+  globals: {
+    settings: Setting;
+  };
+  globalsSelect: {
+    settings: SettingsSelect<false> | SettingsSelect<true>;
+  };
+  locale: 'bg' | 'en';
   widgets: {
     collections: CollectionsWidget;
   };
@@ -119,29 +133,119 @@ export interface UserAuthOperations {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "users".
+ * via the `definition` "products".
  */
-export interface User {
+export interface Product {
   id: number;
-  name: string;
-  updatedAt: string;
-  createdAt: string;
-  email: string;
-  resetPasswordToken?: string | null;
-  resetPasswordExpiration?: string | null;
-  salt?: string | null;
-  hash?: string | null;
-  loginAttempts?: number | null;
-  lockUntil?: string | null;
-  sessions?:
+  title: string;
+  /**
+   * One or two lines, shown on product cards and in search results.
+   */
+  shortDescription?: string | null;
+  description?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  sku: string;
+  /**
+   * Single-unit price in EUR, e.g. 12.50
+   */
+  basePrice: number;
+  unit: 'piece' | 'kg' | 'l' | 'm' | 'box' | 'pack' | 'set';
+  /**
+   * Optional. Cheaper unit prices at higher quantities. Ranges must not overlap, and only the last tier may be left open-ended.
+   */
+  pricingTiers?:
     | {
-        id: string;
-        createdAt?: string | null;
-        expiresAt: string;
+        /**
+         * From this quantity
+         */
+        minQuantity: number;
+        /**
+         * Up to (leave empty for "and above")
+         */
+        maxQuantity?: number | null;
+        /**
+         * EUR per unit
+         */
+        pricePerUnit: number;
+        id?: string | null;
       }[]
     | null;
-  password?: string | null;
-  collection: 'users';
+  stock: number;
+  minOrderQuantity: number;
+  /**
+   * Show a "low stock" badge at or below this level.
+   */
+  lowStockThreshold?: number | null;
+  /**
+   * Shipping weight in grams. Used for courier rate calculation.
+   */
+  weightGrams?: number | null;
+  category?: (number | null) | Category;
+  /**
+   * The first image is used as the product thumbnail.
+   */
+  images?:
+    | {
+        image: number | Media;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Auto-generated from the title. Change with care — it is the public URL.
+   */
+  slug?: string | null;
+  /**
+   * Visible in the shop.
+   */
+  isActive?: boolean | null;
+  /**
+   * Show on the homepage.
+   */
+  isFeatured?: boolean | null;
+  /**
+   * Optional. Falls back to the title and short description.
+   */
+  seo?: {
+    metaTitle?: string | null;
+    metaDescription?: string | null;
+  };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "categories".
+ */
+export interface Category {
+  id: number;
+  title: string;
+  description?: string | null;
+  image?: (number | null) | Media;
+  /**
+   * Optional parent category. Maximum three levels deep.
+   */
+  parent?: (number | null) | Category;
+  /**
+   * Lower numbers appear first.
+   */
+  sortOrder?: number | null;
+  isActive?: boolean | null;
+  slug?: string | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -162,6 +266,178 @@ export interface Media {
   filesize?: number | null;
   width?: number | null;
   height?: number | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "orders".
+ */
+export interface Order {
+  id: number;
+  orderNumber: string;
+  status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
+  customerName?: string | null;
+  customer: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    /**
+     * Required — the courier needs it for Cash on Delivery.
+     */
+    phone: string;
+    /**
+     * Consent record — do not edit.
+     */
+    acceptedTerms: boolean;
+    /**
+     * Consent record — do not edit.
+     */
+    marketingConsent?: boolean | null;
+  };
+  shippingMethod: 'econt_office' | 'econt_address' | 'speedy_office' | 'speedy_address';
+  /**
+   * Courier office name or code.
+   */
+  officeCode?: string | null;
+  shippingAddress?: {
+    street?: string | null;
+    city?: string | null;
+    /**
+     * Four digits (Bulgaria).
+     */
+    postalCode?: string | null;
+    country?: string | null;
+    /**
+     * Delivery instructions.
+     */
+    notes?: string | null;
+  };
+  /**
+   * Snapshot taken when the order was placed. Immutable.
+   */
+  items: {
+    product?: (number | null) | Product;
+    title: string;
+    sku: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+    id?: string | null;
+  }[];
+  /**
+   * EUR. Calculated server-side.
+   */
+  subtotal: number;
+  /**
+   * EUR. Calculated server-side.
+   */
+  shippingCost: number;
+  /**
+   * EUR. Amount due on delivery.
+   */
+  total: number;
+  courierService?: ('econt' | 'speedy') | null;
+  /**
+   * Required before an order can be marked as shipped.
+   */
+  trackingNumber?: string | null;
+  /**
+   * Internal only. Never shown to the customer.
+   */
+  adminNotes?: string | null;
+  /**
+   * Audit trail of status changes.
+   */
+  statusHistory?:
+    | {
+        status?: string | null;
+        changedAt?: string | null;
+        changedBy?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Language the order was placed in — used for email language.
+   */
+  locale?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "pages".
+ */
+export interface Page {
+  id: number;
+  title: string;
+  content?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  seo?: {
+    metaTitle?: string | null;
+    metaDescription?: string | null;
+  };
+  slug?: string | null;
+  isPublished?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "users".
+ */
+export interface User {
+  id: number;
+  name: string;
+  /**
+   * Editors can manage products, categories, pages and orders — but not users or settings.
+   */
+  role: 'admin' | 'editor';
+  updatedAt: string;
+  createdAt: string;
+  email: string;
+  resetPasswordToken?: string | null;
+  resetPasswordExpiration?: string | null;
+  salt?: string | null;
+  hash?: string | null;
+  loginAttempts?: number | null;
+  lockUntil?: string | null;
+  sessions?:
+    | {
+        id: string;
+        createdAt?: string | null;
+        expiresAt: string;
+      }[]
+    | null;
+  password?: string | null;
+  collection: 'users';
+}
+/**
+ * Internal sequence counters, incremented atomically at checkout. Read-only by design.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "counters".
+ */
+export interface Counter {
+  id: number;
+  /**
+   * e.g. "orders:2026"
+   */
+  key: string;
+  value: number;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -188,12 +464,32 @@ export interface PayloadLockedDocument {
   id: number;
   document?:
     | ({
-        relationTo: 'users';
-        value: number | User;
+        relationTo: 'products';
+        value: number | Product;
+      } | null)
+    | ({
+        relationTo: 'categories';
+        value: number | Category;
+      } | null)
+    | ({
+        relationTo: 'orders';
+        value: number | Order;
+      } | null)
+    | ({
+        relationTo: 'pages';
+        value: number | Page;
       } | null)
     | ({
         relationTo: 'media';
         value: number | Media;
+      } | null)
+    | ({
+        relationTo: 'users';
+        value: number | User;
+      } | null)
+    | ({
+        relationTo: 'counters';
+        value: number | Counter;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -239,10 +535,160 @@ export interface PayloadMigration {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "products_select".
+ */
+export interface ProductsSelect<T extends boolean = true> {
+  title?: T;
+  shortDescription?: T;
+  description?: T;
+  sku?: T;
+  basePrice?: T;
+  unit?: T;
+  pricingTiers?:
+    | T
+    | {
+        minQuantity?: T;
+        maxQuantity?: T;
+        pricePerUnit?: T;
+        id?: T;
+      };
+  stock?: T;
+  minOrderQuantity?: T;
+  lowStockThreshold?: T;
+  weightGrams?: T;
+  category?: T;
+  images?:
+    | T
+    | {
+        image?: T;
+        id?: T;
+      };
+  slug?: T;
+  isActive?: T;
+  isFeatured?: T;
+  seo?:
+    | T
+    | {
+        metaTitle?: T;
+        metaDescription?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "categories_select".
+ */
+export interface CategoriesSelect<T extends boolean = true> {
+  title?: T;
+  description?: T;
+  image?: T;
+  parent?: T;
+  sortOrder?: T;
+  isActive?: T;
+  slug?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "orders_select".
+ */
+export interface OrdersSelect<T extends boolean = true> {
+  orderNumber?: T;
+  status?: T;
+  customerName?: T;
+  customer?:
+    | T
+    | {
+        firstName?: T;
+        lastName?: T;
+        email?: T;
+        phone?: T;
+        acceptedTerms?: T;
+        marketingConsent?: T;
+      };
+  shippingMethod?: T;
+  officeCode?: T;
+  shippingAddress?:
+    | T
+    | {
+        street?: T;
+        city?: T;
+        postalCode?: T;
+        country?: T;
+        notes?: T;
+      };
+  items?:
+    | T
+    | {
+        product?: T;
+        title?: T;
+        sku?: T;
+        quantity?: T;
+        unitPrice?: T;
+        totalPrice?: T;
+        id?: T;
+      };
+  subtotal?: T;
+  shippingCost?: T;
+  total?: T;
+  courierService?: T;
+  trackingNumber?: T;
+  adminNotes?: T;
+  statusHistory?:
+    | T
+    | {
+        status?: T;
+        changedAt?: T;
+        changedBy?: T;
+        id?: T;
+      };
+  locale?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "pages_select".
+ */
+export interface PagesSelect<T extends boolean = true> {
+  title?: T;
+  content?: T;
+  seo?:
+    | T
+    | {
+        metaTitle?: T;
+        metaDescription?: T;
+      };
+  slug?: T;
+  isPublished?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "media_select".
+ */
+export interface MediaSelect<T extends boolean = true> {
+  alt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
   name?: T;
+  role?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;
@@ -262,19 +708,13 @@ export interface UsersSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "media_select".
+ * via the `definition` "counters_select".
  */
-export interface MediaSelect<T extends boolean = true> {
-  alt?: T;
+export interface CountersSelect<T extends boolean = true> {
+  key?: T;
+  value?: T;
   updatedAt?: T;
   createdAt?: T;
-  url?: T;
-  thumbnailURL?: T;
-  filename?: T;
-  mimeType?: T;
-  filesize?: T;
-  width?: T;
-  height?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -315,6 +755,140 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
   batch?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "settings".
+ */
+export interface Setting {
+  id: number;
+  siteName?: string | null;
+  logo?: (number | null) | Media;
+  /**
+   * Main headline on the homepage.
+   */
+  heroHeading?: string | null;
+  heroSubheading?: string | null;
+  announcementBar?: {
+    isActive?: boolean | null;
+    text?: string | null;
+    link?: string | null;
+  };
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  address?: string | null;
+  socialLinks?:
+    | {
+        platform?: ('facebook' | 'instagram' | 'viber' | 'telegram') | null;
+        url?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  companyName?: string | null;
+  /**
+   * UIC / Bulstat
+   */
+  registrationNumber?: string | null;
+  /**
+   * If VAT registered
+   */
+  vatNumber?: string | null;
+  registeredAddress?: string | null;
+  tradeRegisterInfo?: string | null;
+  /**
+   * Flat rates in EUR, applied at checkout.
+   */
+  shippingRates?: {
+    econtOffice?: number | null;
+    econtAddress?: number | null;
+    speedyOffice?: number | null;
+    speedyAddress?: number | null;
+    /**
+     * Order subtotal above which shipping is free. Leave empty to disable.
+     */
+    freeShippingThreshold?: number | null;
+  };
+  /**
+   * Shown on product pages and at checkout.
+   */
+  shippingInfo?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  footerText?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "settings_select".
+ */
+export interface SettingsSelect<T extends boolean = true> {
+  siteName?: T;
+  logo?: T;
+  heroHeading?: T;
+  heroSubheading?: T;
+  announcementBar?:
+    | T
+    | {
+        isActive?: T;
+        text?: T;
+        link?: T;
+      };
+  contactEmail?: T;
+  contactPhone?: T;
+  address?: T;
+  socialLinks?:
+    | T
+    | {
+        platform?: T;
+        url?: T;
+        id?: T;
+      };
+  companyName?: T;
+  registrationNumber?: T;
+  vatNumber?: T;
+  registeredAddress?: T;
+  tradeRegisterInfo?: T;
+  shippingRates?:
+    | T
+    | {
+        econtOffice?: T;
+        econtAddress?: T;
+        speedyOffice?: T;
+        speedyAddress?: T;
+        freeShippingThreshold?: T;
+      };
+  shippingInfo?: T;
+  footerText?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
