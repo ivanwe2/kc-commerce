@@ -40,9 +40,13 @@
       "binding": "R2",
       "bucket_name": "kc-commerce-media",
     },
-    // Phase 8 will add the incremental cache bucket here. Without it, `revalidate`
-    // silently degrades to fully dynamic rendering on every request.
-    // { "binding": "NEXT_INC_CACHE_R2_BUCKET", "bucket_name": "kc-commerce-cache" },
+    // Persists rendered pages for ISR. Without this binding, `revalidate` on
+    // every storefront page silently degrades to fully dynamic rendering.
+    // Create with: wrangler r2 bucket create kc-commerce-cache
+    {
+      "binding": "NEXT_INC_CACHE_R2_BUCKET",
+      "bucket_name": "kc-commerce-cache",
+    },
   ],
 
   // --- Public, non-secret configuration ------------------------------------
@@ -78,6 +82,10 @@
         {
           "binding": "R2",
           "bucket_name": "kc-commerce-media-staging",
+        },
+        {
+          "binding": "NEXT_INC_CACHE_R2_BUCKET",
+          "bucket_name": "kc-commerce-cache-staging",
         },
       ],
       "vars": {

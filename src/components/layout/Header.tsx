@@ -1,7 +1,8 @@
-import { Menu, Search } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
+import { SearchBox } from '@/components/SearchBox'
 import { CartIcon } from '@/components/cart/CartIcon'
 import { MobileNav } from '@/components/layout/MobileNav'
 import { Link } from '@/i18n/routing'
@@ -43,19 +44,19 @@ export async function Header({ locale }: { locale: StorefrontLocale }) {
           ))}
         </nav>
 
-        <div className="ml-auto flex items-center gap-2">
-          <Link
-            href="/products"
-            aria-label={t('search')}
-            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-[--radius-control] text-secondary transition-colors hover:bg-surface-alt hover:text-primary"
-          >
-            <Search className="size-5" aria-hidden="true" />
-          </Link>
+        {/* Search takes the free space on desktop; on mobile it moves to its
+            own row below so the header does not squeeze to nothing. */}
+        <SearchBox className="ml-auto hidden max-w-md flex-1 md:block" />
 
+        <div className="ml-auto flex items-center gap-2 md:ml-0">
           <CartIcon />
 
           <LanguageSwitcher />
         </div>
+      </div>
+
+      <div className="container-page pb-3 md:hidden">
+        <SearchBox />
       </div>
     </header>
   )

@@ -31,6 +31,11 @@ pnpm exec wrangler d1 create kc-commerce
 
 # Media bucket
 pnpm exec wrangler r2 bucket create kc-commerce-media
+
+# ISR cache bucket — REQUIRED. Without it, every page marked `revalidate`
+# silently degrades to fully dynamic rendering: correct, but slow and metered
+# as though nothing were cached.
+pnpm exec wrangler r2 bucket create kc-commerce-cache
 ```
 
 Paste the returned `database_id` into `wrangler.jsonc`, replacing
@@ -42,6 +47,7 @@ secret.
 ```bash
 pnpm exec wrangler d1 create kc-commerce-staging
 pnpm exec wrangler r2 bucket create kc-commerce-media-staging
+pnpm exec wrangler r2 bucket create kc-commerce-cache-staging
 ```
 
 and paste that id into the `env.staging` block.
@@ -129,6 +135,34 @@ Free for the first 5,000 unique transformations per month.
 
 ---
 
+## 5b. Cache Rules (~5 min, meaningful win)
+
+The Worker already caches rendered pages in R2. Cache Rules go one better and
+hold storefront responses at the **edge**, so a cached page never invokes the
+Worker at all — faster for the visitor, and it does not count as a request.
+
+Cloudflare dashboard → **Caching → Cache Rules → Create rule**:
+
+**Rule 1 — cache the storefront**
+- If: `(http.request.method eq "GET" and not starts_with(http.request.uri.path, "/admin")
+  and not starts_with(http.request.uri.path, "/api")
+  and not starts_with(http.request.uri.path, "/cart")
+  and not starts_with(http.request.uri.path, "/checkout"))`
+- Then: *Eligible for cache*, Edge TTL **respect origin**, Browser TTL 5 minutes
+
+**Rule 2 — never cache authenticated or personal responses** (put it FIRST)
+- If: `(http.cookie contains "payload-token" or starts_with(http.request.uri.path, "/admin")
+  or starts_with(http.request.uri.path, "/api")
+  or starts_with(http.request.uri.path, "/cart")
+  or starts_with(http.request.uri.path, "/checkout"))`
+- Then: *Bypass cache*
+
+Order matters — the bypass rule has to be evaluated first, or a signed-in
+admin's page could be served to the public from cache. That is the one way to
+get this badly wrong, so verify it before enabling rule 1.
+
+---
+
 ## 6. Security settings (~5 min)
 
 In the dashboard, for the zone:
@@ -212,6 +246,8 @@ backwards-compatible with the currently deployed Worker.
 **Technical**
 
 - [ ] `/api/health` returns `{"status":"ok","database":"ok"}`
+- [ ] Search returns results (confirms the FTS5 index migration ran)
+- [ ] A cached storefront page shows `cf-cache-status: HIT` on the second request
 - [ ] `/sitemap.xml` and `/robots.txt` show the real domain, not `localhost`
 - [ ] Security headers present on the storefront (`curl -I`)
 - [ ] `/admin` requires login
