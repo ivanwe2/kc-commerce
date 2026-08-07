@@ -183,6 +183,24 @@
     "outOfStock": "Няма достатъчна наличност от {product}",
     "productUnavailable": "{product} вече не е наличен",
     "orderFailed": "Поръчката не можа да бъде изпратена. Моля, опитайте отново.",
-    "tooManyRequests": "Твърде много опити. Моля, изчакайте малко."
+    "tooManyRequests": "Твърде много опити. Моля, изчакайте малко.",
+    "orderNotFound": "Не е намерена поръчка с този номер и имейл."
+  },
+  "orders": {
+    "trackOrder": "Проследяване на поръчка",
+    "trackOrderHint": "Въведете номера на поръчката и имейла, с който я направихте.",
+    "orderNumber": "Номер на поръчка",
+    "checkStatus": "Провери статуса",
+    "checking": "Проверка...",
+    "trackingNumber": "Номер за проследяване",
+    "trackParcel": "Проследи пратката",
+    "total": "Общо",
+    "status_pending": "Получена",
+    "status_confirmed": "Потвърдена",
+    "status_processing": "Обработва се",
+    "status_shipped": "Изпратена",
+    "status_delivered": "Доставена",
+    "status_cancelled": "Отказана",
+    "status_returned": "Върната"
   }
 }

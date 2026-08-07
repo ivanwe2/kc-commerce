@@ -100,6 +100,17 @@ export const Orders: CollectionConfig = {
       type: 'text',
       admin: { readOnly: true, hidden: true },
     },
+    {
+      name: 'customerAccount',
+      type: 'relationship',
+      relationTo: 'customers',
+      index: true,
+      admin: {
+        readOnly: true,
+        position: 'sidebar',
+        description: 'Set when the order was placed by a signed-in customer. Guest orders have none.',
+      },
+    },
 
     {
       name: 'customer',

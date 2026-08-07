@@ -183,6 +183,24 @@
     "outOfStock": "Not enough stock for {product}",
     "productUnavailable": "{product} is no longer available",
     "orderFailed": "Your order could not be placed. Please try again.",
-    "tooManyRequests": "Too many attempts. Please wait a moment."
+    "tooManyRequests": "Too many attempts. Please wait a moment.",
+    "orderNotFound": "No order found with that number and email."
+  },
+  "orders": {
+    "trackOrder": "Track your order",
+    "trackOrderHint": "Enter your order number and the email you used to place it.",
+    "orderNumber": "Order number",
+    "checkStatus": "Check status",
+    "checking": "Checking...",
+    "trackingNumber": "Tracking number",
+    "trackParcel": "Track parcel",
+    "total": "Total",
+    "status_pending": "Received",
+    "status_confirmed": "Confirmed",
+    "status_processing": "Processing",
+    "status_shipped": "Shipped",
+    "status_delivered": "Delivered",
+    "status_cancelled": "Cancelled",
+    "status_returned": "Returned"
   }
 }

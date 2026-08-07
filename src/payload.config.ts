@@ -12,6 +12,7 @@ import { Banners } from './collections/Banners'
 import { Brands } from './collections/Brands'
 import { Categories } from './collections/Categories'
 import { Counters } from './collections/Counters'
+import { Customers } from './collections/Customers'
 import { Media } from './collections/Media'
 import { Orders } from './collections/Orders'
 import { Pages } from './collections/Pages'
@@ -145,6 +146,7 @@ export default buildConfig({
     Media,
     Users,
     Banners,
+    Customers,
     Counters,
     PriceHistory,
   ],
