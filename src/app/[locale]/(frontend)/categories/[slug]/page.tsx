@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 
 import { ProductCard } from '@/components/product/ProductCard'
+import { referencePricesForMany } from '@/lib/discount'
 import { Pagination } from '@/components/ui/Pagination'
 import { Link } from '@/i18n/routing'
 import {
@@ -77,6 +78,9 @@ export default async function CategoryPage({
     limit: PAGE_SIZE,
   })
 
+  // One history query for the whole page, not one per card.
+  const references = await referencePricesForMany(await getPayloadClient(), results.docs)
+
   return (
     <main className="container-page py-8">
       <nav aria-label="Breadcrumb" className="text-sm text-muted">
@@ -112,6 +116,7 @@ export default async function CategoryPage({
                 key={product.id}
                 product={product}
                 locale={locale}
+                referencePrice={references.get(product.id)}
                 priority={index < 4}
               />
             ))}

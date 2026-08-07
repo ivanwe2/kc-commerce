@@ -254,6 +254,58 @@ async function seed() {
     })
   }
 
+  /**
+   * Put one product on sale, as a second write.
+   *
+   * Deliberately not set at creation time: the price-history hook records the
+   * base price on create and the sale price on update, which is exactly the
+   * sequence a real reduction produces. Setting it inline would leave no prior
+   * history, and the 30-day reference price would have nothing to compare
+   * against — the discount would render with nothing struck through.
+   */
+  const cleaner = await payload.find({
+    collection: 'products',
+    where: { sku: { equals: 'KC-CLN-001' } },
+    limit: 1,
+    depth: 0,
+  })
+
+  if (cleaner.docs[0] && cleaner.docs[0].salePrice == null) {
+    await payload.update({
+      collection: 'products',
+      id: cleaner.docs[0].id,
+      data: { salePrice: 3.6 },
+    })
+  }
+
+  const banners = await payload.count({ collection: 'banners' })
+  if (banners.totalDocs === 0) {
+    const banner = await payload.create({
+      collection: 'banners',
+      locale: 'bg',
+      data: {
+        title: 'Есенна промоция',
+        subtitle: 'Спестете до 20% на избрани почистващи препарати',
+        linkUrl: '/products?onSale=1',
+        linkLabel: 'Виж офертите',
+        placement: 'homepage_hero',
+        isActive: true,
+        sortOrder: 0,
+      },
+    })
+
+    await payload.update({
+      collection: 'banners',
+      id: banner.id,
+      locale: 'en',
+      data: {
+        title: 'Autumn promotion',
+        subtitle: 'Save up to 20% on selected cleaning supplies',
+        linkLabel: 'See the offers',
+      },
+    })
+  }
+
   await payload.updateGlobal({
     slug: 'settings',
     locale: 'bg',
@@ -281,7 +333,7 @@ async function seed() {
 
   // eslint-disable-next-line no-console -- this is a CLI script; output is the point.
   console.log(
-    `Seeded ${BRANDS.length} brands, ${CATEGORIES.length} categories and ${PRODUCTS.length} products, plus site settings.`,
+    `Seeded ${BRANDS.length} brands, ${CATEGORIES.length} categories, ${PRODUCTS.length} products, one sale, one banner, plus site settings.`,
   )
 }
 

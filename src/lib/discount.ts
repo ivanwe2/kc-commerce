@@ -168,6 +168,82 @@ async function findSaleStart(
   return saleStart
 }
 
+/**
+ * Reference prices for many products in ONE query.
+ *
+ * Product grids need this: a listing of 12 cards must not issue 12 history
+ * queries, and on D1 — where reads are metered — an N+1 here would be both slow
+ * and billed. Only products actually on sale are looked up, since there is
+ * nothing to strike through on the rest.
+ *
+ * Showing a sale price on a card WITHOUT its reference is not merely an
+ * inconsistency with the detail page: announcing a reduction without the
+ * required "previous price" is the thing the Consumer Protection Act
+ * specifically regulates.
+ */
+export async function referencePricesForMany(
+  payload: Payload,
+  products: SaleableProduct[],
+  now: Date = new Date(),
+): Promise<Map<number, number>> {
+  const result = new Map<number, number>()
+
+  const onSale = products.filter((product) => isSaleActive(product, now))
+  if (onSale.length === 0) return result
+
+  const windowStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+
+  const history = await payload.find({
+    collection: 'price-history',
+    where: {
+      and: [
+        { product: { in: onSale.map((product) => product.id) } },
+        { recordedAt: { greater_than_equal: windowStart.toISOString() } },
+      ],
+    },
+    limit: 1000,
+    depth: 0,
+    sort: '-recordedAt',
+    overrideAccess: true,
+  })
+
+  // Group by product, newest first, matching findSaleStart's expectations.
+  const byProduct = new Map<number, { price: number; recordedAt: string }[]>()
+  for (const row of history.docs) {
+    const productId = typeof row.product === 'object' ? row.product?.id : row.product
+    if (typeof productId !== 'number') continue
+    if (typeof row.price !== 'number' || typeof row.recordedAt !== 'string') continue
+
+    const list = byProduct.get(productId) ?? []
+    list.push({ price: row.price, recordedAt: row.recordedAt })
+    byProduct.set(productId, list)
+  }
+
+  for (const product of onSale) {
+    const rows = byProduct.get(product.id) ?? []
+
+    // Same rule as the single-product path: the window closes when this
+    // reduction began, so the sale's own rows cannot become their own reference.
+    let saleStart: Date | null = product.saleStartsAt ? new Date(product.saleStartsAt) : null
+
+    if (!saleStart) {
+      for (const row of rows) {
+        if (roundMoney(row.price) !== roundMoney(product.salePrice!)) break
+        saleStart = new Date(row.recordedAt)
+      }
+    }
+
+    const cutoff = saleStart ?? now
+    const prior = rows
+      .filter((row) => new Date(row.recordedAt) < cutoff)
+      .map((row) => row.price)
+
+    result.set(product.id, roundMoney(prior.length > 0 ? Math.min(...prior) : product.basePrice))
+  }
+
+  return result
+}
+
 /** Discount percentage against the reference price, for badges. */
 export function discountPercent(reference: number, effective: number): number {
   if (reference <= 0 || effective >= reference) return 0
