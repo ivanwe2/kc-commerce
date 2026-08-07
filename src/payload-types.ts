@@ -64,6 +64,7 @@ export type SupportedTimezones =
 export interface Config {
   auth: {
     users: UserAuthOperations;
+    customers: CustomerAuthOperations;
   };
   blocks: {};
   collections: {
@@ -75,6 +76,7 @@ export interface Config {
     media: Media;
     users: User;
     banners: Banner;
+    customers: Customer;
     counters: Counter;
     'price-history': PriceHistory;
     'payload-kv': PayloadKv;
@@ -92,6 +94,7 @@ export interface Config {
     media: MediaSelect<false> | MediaSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     banners: BannersSelect<false> | BannersSelect<true>;
+    customers: CustomersSelect<false> | CustomersSelect<true>;
     counters: CountersSelect<false> | CountersSelect<true>;
     'price-history': PriceHistorySelect<false> | PriceHistorySelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
@@ -113,13 +116,31 @@ export interface Config {
   widgets: {
     collections: CollectionsWidget;
   };
-  user: User;
+  user: User | Customer;
   jobs: {
     tasks: unknown;
     workflows: unknown;
   };
 }
 export interface UserAuthOperations {
+  forgotPassword: {
+    email: string;
+    password: string;
+  };
+  login: {
+    email: string;
+    password: string;
+  };
+  registerFirstUser: {
+    email: string;
+    password: string;
+  };
+  unlock: {
+    email: string;
+    password: string;
+  };
+}
+export interface CustomerAuthOperations {
   forgotPassword: {
     email: string;
     password: string;
@@ -323,6 +344,10 @@ export interface Order {
   orderNumber: string;
   status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
   customerName?: string | null;
+  /**
+   * Set when the order was placed by a signed-in customer. Guest orders have none.
+   */
+  customerAccount?: (number | null) | Customer;
   customer: {
     firstName: string;
     lastName: string;
@@ -413,6 +438,48 @@ export interface Order {
   locale?: string | null;
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "customers".
+ */
+export interface Customer {
+  id: number;
+  firstName: string;
+  lastName: string;
+  phone?: string | null;
+  /**
+   * Pre-fills checkout. The customer can still change it per order.
+   */
+  defaultAddress?: {
+    street?: string | null;
+    city?: string | null;
+    postalCode?: string | null;
+    preferredShippingMethod?: ('econt_office' | 'econt_address' | 'speedy_office' | 'speedy_address') | null;
+    officeCode?: string | null;
+  };
+  /**
+   * Consent record — reflects what the customer chose.
+   */
+  marketingConsent?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+  email: string;
+  resetPasswordToken?: string | null;
+  resetPasswordExpiration?: string | null;
+  salt?: string | null;
+  hash?: string | null;
+  loginAttempts?: number | null;
+  lockUntil?: string | null;
+  sessions?:
+    | {
+        id: string;
+        createdAt?: string | null;
+        expiresAt: string;
+      }[]
+    | null;
+  password?: string | null;
+  collection: 'customers';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -595,6 +662,10 @@ export interface PayloadLockedDocument {
         value: number | Banner;
       } | null)
     | ({
+        relationTo: 'customers';
+        value: number | Customer;
+      } | null)
+    | ({
         relationTo: 'counters';
         value: number | Counter;
       } | null)
@@ -603,10 +674,15 @@ export interface PayloadLockedDocument {
         value: number | PriceHistory;
       } | null);
   globalSlug?: string | null;
-  user: {
-    relationTo: 'users';
-    value: number | User;
-  };
+  user:
+    | {
+        relationTo: 'users';
+        value: number | User;
+      }
+    | {
+        relationTo: 'customers';
+        value: number | Customer;
+      };
   updatedAt: string;
   createdAt: string;
 }
@@ -616,10 +692,15 @@ export interface PayloadLockedDocument {
  */
 export interface PayloadPreference {
   id: number;
-  user: {
-    relationTo: 'users';
-    value: number | User;
-  };
+  user:
+    | {
+        relationTo: 'users';
+        value: number | User;
+      }
+    | {
+        relationTo: 'customers';
+        value: number | Customer;
+      };
   key?: string | null;
   value?:
     | {
@@ -728,6 +809,7 @@ export interface OrdersSelect<T extends boolean = true> {
   orderNumber?: T;
   status?: T;
   customerName?: T;
+  customerAccount?: T;
   customer?:
     | T
     | {
@@ -855,6 +937,41 @@ export interface BannersSelect<T extends boolean = true> {
   isActive?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "customers_select".
+ */
+export interface CustomersSelect<T extends boolean = true> {
+  firstName?: T;
+  lastName?: T;
+  phone?: T;
+  defaultAddress?:
+    | T
+    | {
+        street?: T;
+        city?: T;
+        postalCode?: T;
+        preferredShippingMethod?: T;
+        officeCode?: T;
+      };
+  marketingConsent?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  email?: T;
+  resetPasswordToken?: T;
+  resetPasswordExpiration?: T;
+  salt?: T;
+  hash?: T;
+  loginAttempts?: T;
+  lockUntil?: T;
+  sessions?:
+    | T
+    | {
+        id?: T;
+        createdAt?: T;
+        expiresAt?: T;
+      };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

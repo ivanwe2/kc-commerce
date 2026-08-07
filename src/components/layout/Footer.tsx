@@ -16,6 +16,7 @@ import { getSettings, type StorefrontLocale } from '@/lib/payload'
 export async function Footer({ locale }: { locale: StorefrontLocale }) {
   const t = await getTranslations('common')
   const legal = await getTranslations('legal')
+  const orders = await getTranslations('orders')
   const settings = await getSettings(locale)
 
   const company = {
@@ -52,6 +53,11 @@ export async function Footer({ locale }: { locale: StorefrontLocale }) {
             <li>
               <Link href="/categories" className="text-sm text-body hover:text-primary">
                 {t('categories')}
+              </Link>
+            </li>
+            <li>
+              <Link href="/orders" className="text-sm text-body hover:text-primary">
+                {orders('trackOrder')}
               </Link>
             </li>
             <li>
