@@ -4,6 +4,7 @@ import { activeOrAuthenticated, isAdminOrEditor } from '@/access'
 import { roundMoney } from '@/lib/money'
 import { validatePricingTiers, type PricingTier } from '@/lib/pricing'
 import { slugify } from '@/lib/slugify'
+import { alertOnLowStock } from './hooks/lowStock'
 import { recordPriceHistory } from './hooks/priceHistory'
 import { revalidateProduct, revalidateProductDelete } from './hooks/revalidate'
 
@@ -290,7 +291,7 @@ export const Products: CollectionConfig = {
 
   hooks: {
     // Price history first: it must be recorded even if cache invalidation fails.
-    afterChange: [recordPriceHistory, revalidateProduct],
+    afterChange: [recordPriceHistory, alertOnLowStock, revalidateProduct],
     afterDelete: [revalidateProductDelete],
     beforeValidate: [
       async ({ data, req, operation, originalDoc }) => {
