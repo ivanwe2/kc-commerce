@@ -330,6 +330,16 @@ export const Orders: CollectionConfig = {
       ],
     },
     {
+      name: 'invoiceLink',
+      type: 'ui',
+      admin: {
+        position: 'sidebar',
+        components: {
+          Field: '@/components/admin/InvoiceLink#InvoiceLink',
+        },
+      },
+    },
+    {
       name: 'locale',
       type: 'text',
       admin: {

@@ -73,6 +73,26 @@ export async function sendWithdrawalNotice(data: {
   )
 }
 
+export async function sendLowStockAlert(data: {
+  title: string
+  sku: string
+  stock: number
+  threshold: number
+  outOfStock: boolean
+}): Promise<void> {
+  const adminEmail = process.env.ORDER_NOTIFICATION_EMAIL
+  if (!adminEmail) return
+
+  await send(
+    adminEmail,
+    `[${data.outOfStock ? 'OUT OF STOCK' : 'LOW STOCK'}] ${data.sku}`,
+    `<h2>${data.outOfStock ? 'Out of stock' : 'Low stock'}</h2>
+     <p><strong>${escapeHtml(data.title)}</strong> (${escapeHtml(data.sku)})</p>
+     <p>Remaining: <strong>${data.stock}</strong> (threshold ${data.threshold})</p>
+     ${data.outOfStock ? '<p>This product is now hidden from customers as unavailable.</p>' : ''}`,
+  )
+}
+
 export async function sendContactMessage(data: {
   name: string
   email: string
