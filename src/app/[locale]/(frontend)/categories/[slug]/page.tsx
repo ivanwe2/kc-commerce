@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server'
 
 import { ProductCard } from '@/components/product/ProductCard'
 import { referencePricesForMany } from '@/lib/discount'
+import { collectSlugs } from '@/lib/staticParams'
 import { Pagination } from '@/components/ui/Pagination'
 import { Link } from '@/i18n/routing'
 import {
@@ -19,18 +20,7 @@ const PAGE_SIZE = 12
 
 export async function generateStaticParams() {
   const payload = await getPayloadClient()
-  const categories = await payload.find({
-    collection: 'categories',
-    where: { isActive: { equals: true } },
-    limit: 200,
-    depth: 0,
-    select: { slug: true },
-  })
-
-  return categories.docs
-    .map((category) => category.slug)
-    .filter((slug): slug is string => Boolean(slug))
-    .map((slug) => ({ slug }))
+  return collectSlugs(payload, 'categories', { isActive: { equals: true } }, 200)
 }
 
 export async function generateMetadata({

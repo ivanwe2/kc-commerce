@@ -6,6 +6,7 @@ import { AddToCartButton } from '@/components/product/AddToCartButton'
 import { ProductCard } from '@/components/product/ProductCard'
 import { ProductGallery } from '@/components/product/ProductGallery'
 import { RecentlyViewed, TrackProductView } from '@/components/product/RecentlyViewed'
+import { collectSlugs } from '@/lib/staticParams'
 import { PriceDisplay } from '@/components/product/PriceDisplay'
 import { StockBadge } from '@/components/ui/Badge'
 import { Link } from '@/i18n/routing'
@@ -29,18 +30,7 @@ export const revalidate = 3600
  */
 export async function generateStaticParams() {
   const payload = await getPayloadClient()
-  const products = await payload.find({
-    collection: 'products',
-    where: { isActive: { equals: true } },
-    limit: 1000,
-    depth: 0,
-    select: { slug: true },
-  })
-
-  return products.docs
-    .map((product) => product.slug)
-    .filter((slug): slug is string => Boolean(slug))
-    .map((slug) => ({ slug }))
+  return collectSlugs(payload, 'products', { isActive: { equals: true } }, 1000)
 }
 
 export async function generateMetadata({

@@ -5,6 +5,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { MediaImage } from '@/components/MediaImage'
 import { ProductCard } from '@/components/product/ProductCard'
 import { referencePricesForMany } from '@/lib/discount'
+import { collectSlugs } from '@/lib/staticParams'
 import { Pagination } from '@/components/ui/Pagination'
 import { Link } from '@/i18n/routing'
 import { findBrandBySlug, findProducts, getPayloadClient, type StorefrontLocale } from '@/lib/payload'
@@ -15,18 +16,7 @@ const PAGE_SIZE = 12
 
 export async function generateStaticParams() {
   const payload = await getPayloadClient()
-  const brands = await payload.find({
-    collection: 'brands',
-    where: { isActive: { equals: true } },
-    limit: 200,
-    depth: 0,
-    select: { slug: true },
-  })
-
-  return brands.docs
-    .map((brand) => brand.slug)
-    .filter((slug): slug is string => Boolean(slug))
-    .map((slug) => ({ slug }))
+  return collectSlugs(payload, 'brands', { isActive: { equals: true } }, 200)
 }
 
 export async function generateMetadata({
