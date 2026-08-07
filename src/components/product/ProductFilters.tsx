@@ -7,7 +7,7 @@ import { usePathname } from '@/i18n/routing'
 import { useOptimistic, useTransition } from 'react'
 
 import { buttonVariants } from '@/components/ui/Button'
-import type { Category } from '@/payload-types'
+import type { Brand, Category } from '@/payload-types'
 
 /**
  * Filter sidebar.
@@ -17,7 +17,13 @@ import type { Category } from '@/payload-types'
  * and lets the page stay a Server Component that reads searchParams — no
  * client-side product fetching, no loading spinner, no duplicated filter logic.
  */
-export function ProductFilters({ categories }: { categories: Category[] }) {
+export function ProductFilters({
+  categories,
+  brands,
+}: {
+  categories: Category[]
+  brands: Brand[]
+}) {
   const t = useTranslations('filters')
   const router = useRouter()
   const pathname = usePathname()
@@ -63,7 +69,7 @@ export function ProductFilters({ categories }: { categories: Category[] }) {
     })
   }
 
-  const hasFilters = ['q', 'category', 'min', 'max', 'inStock', 'onSale', 'sort'].some((key) =>
+  const hasFilters = ['q', 'category', 'brand', 'min', 'max', 'inStock', 'onSale', 'sort'].some((key) =>
     searchParams.has(key),
   )
 
@@ -107,6 +113,27 @@ export function ProductFilters({ categories }: { categories: Category[] }) {
           ))}
         </select>
       </div>
+
+      {brands.length > 0 && (
+        <div>
+          <label htmlFor="filter-brand" className="mb-1.5 block text-sm font-medium text-body">
+            {t('brand')}
+          </label>
+          <select
+            id="filter-brand"
+            value={optimisticParams.get('brand') ?? ''}
+            onChange={(event) => update('brand', event.target.value || null)}
+            className="w-full rounded-[--radius-control] border border-border-default bg-background px-3 py-2 text-base focus:border-primary focus:outline-none"
+          >
+            <option value="">—</option>
+            {brands.map((brand) => (
+              <option key={brand.id} value={brand.slug ?? ''}>
+                {brand.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <fieldset>
         <legend className="mb-1.5 text-sm font-medium text-body">{t('priceRange')}</legend>

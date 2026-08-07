@@ -19,6 +19,7 @@ import { unstable_cache } from 'next/cache'
  *   products          every product query
  *   product:<slug>    one product's detail page
  *   categories        every category query
+ *   brands            every brand query
  *   pages             CMS pages
  *   settings          the Settings global (read on every page)
  */
@@ -27,6 +28,7 @@ export const CACHE_TAGS = {
   products: 'products',
   product: (slug: string) => `product:${slug}`,
   categories: 'categories',
+  brands: 'brands',
   pages: 'pages',
   page: (slug: string) => `page:${slug}`,
   settings: 'settings',

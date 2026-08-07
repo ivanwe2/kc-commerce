@@ -16,7 +16,8 @@
     "viewAll": "View all",
     "continueShopping": "Continue shopping",
     "backToHome": "Back to homepage",
-    "required": "Required"
+    "required": "Required",
+    "brands": "Brands"
   },
   "nav": {
     "openMenu": "Open menu",
@@ -163,7 +164,8 @@
     "sortNameAsc": "Name: A-Z",
     "apply": "Apply",
     "reset": "Reset filters",
-    "onSaleFilter": "On sale only"
+    "onSaleFilter": "On sale only",
+    "brand": "Brands"
   },
   "errors": {
     "notFoundTitle": "Page not found",

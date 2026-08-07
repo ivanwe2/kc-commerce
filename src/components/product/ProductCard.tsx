@@ -55,6 +55,7 @@ export async function ProductCard({
 
   const firstImage = product.images?.[0]?.image
   const category = typeof product.category === 'object' ? product.category : null
+  const brand = typeof product.brand === 'object' ? product.brand : null
 
   return (
     <article className="group relative flex flex-col overflow-hidden rounded-[--radius-surface] border border-border-default bg-background shadow-raised transition-shadow duration-150 hover:shadow-floating">
@@ -86,7 +87,11 @@ export async function ProductCard({
       </div>
 
       <div className="flex flex-1 flex-col gap-2 p-4">
-        {category && <p className="text-xs text-muted">{category.title}</p>}
+        <p className="text-xs text-muted">
+          {brand ? <span className="font-medium text-secondary">{brand.name}</span> : null}
+          {brand && category ? ' · ' : null}
+          {category ? category.title : null}
+        </p>
 
         <h3 className="line-clamp-2 text-base font-semibold text-heading">
           {/* The card is one link target, stretched across the whole article, so

@@ -16,7 +16,8 @@
     "viewAll": "Виж всички",
     "continueShopping": "Продължи пазаруването",
     "backToHome": "Към началната страница",
-    "required": "Задължително поле"
+    "required": "Задължително поле",
+    "brands": "Марки"
   },
   "nav": {
     "openMenu": "Отвори менюто",
@@ -163,7 +164,8 @@
     "sortNameAsc": "Име: А-Я",
     "apply": "Приложи",
     "reset": "Изчисти филтрите",
-    "onSaleFilter": "Само промоции"
+    "onSaleFilter": "Само промоции",
+    "brand": "Марки"
   },
   "errors": {
     "notFoundTitle": "Страницата не е намерена",

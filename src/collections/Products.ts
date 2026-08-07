@@ -19,7 +19,7 @@ export const Products: CollectionConfig = {
 
   admin: {
     useAsTitle: 'title',
-    defaultColumns: ['title', 'sku', 'basePrice', 'salePrice', 'stock', 'isActive'],
+    defaultColumns: ['title', 'sku', 'brand', 'basePrice', 'salePrice', 'stock', 'isActive'],
     listSearchableFields: ['title', 'sku'],
     group: 'Catalogue',
   },
@@ -206,10 +206,22 @@ export const Products: CollectionConfig = {
 
     // --- Relationships ------------------------------------------------------
     {
-      name: 'category',
-      type: 'relationship',
-      relationTo: 'categories',
-      index: true,
+      type: 'row',
+      fields: [
+        {
+          name: 'category',
+          type: 'relationship',
+          relationTo: 'categories',
+          index: true,
+        },
+        {
+          name: 'brand',
+          type: 'relationship',
+          relationTo: 'brands',
+          index: true,
+          admin: { description: 'Optional. Products without a brand still list normally.' },
+        },
+      ],
     },
     {
       name: 'images',

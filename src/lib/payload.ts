@@ -3,7 +3,7 @@ import { getPayload } from 'payload'
 import type { Payload, TypedLocale, Where } from 'payload'
 
 import { CACHE_TAGS, cachedQuery } from './cache'
-import type { Category, Product, Setting } from '@/payload-types'
+import type { Brand, Category, Product, Setting } from '@/payload-types'
 
 /**
  * Data access for the storefront, all through Payload's Local API.
@@ -29,6 +29,7 @@ type ProductQueryOptions = {
   limit?: number
   page?: number
   categoryId?: number
+  brandId?: number
   search?: string
   minPrice?: number
   maxPrice?: number
@@ -44,6 +45,7 @@ export async function findProducts({
   limit = 12,
   page = 1,
   categoryId,
+  brandId,
   search,
   minPrice,
   maxPrice,
@@ -57,6 +59,7 @@ export async function findProducts({
   const and: Where[] = [{ isActive: { equals: true } }]
 
   if (categoryId) and.push({ category: { equals: categoryId } })
+  if (brandId) and.push({ brand: { equals: brandId } })
   if (featuredOnly) and.push({ isFeatured: { equals: true } })
   if (inStockOnly) and.push({ stock: { greater_than: 0 } })
 
@@ -167,6 +170,41 @@ export const findCategories = (locale: StorefrontLocale): Promise<Category[]> =>
     ['categories'],
     [CACHE_TAGS.categories],
   )(locale)
+
+export const findBrands = (locale: StorefrontLocale): Promise<Brand[]> =>
+  cachedQuery(
+    async (loc: StorefrontLocale) => {
+      const payload = await getPayloadClient()
+      const result = await payload.find({
+        collection: 'brands',
+        locale: loc,
+        where: { isActive: { equals: true } },
+        limit: 200,
+        sort: 'name',
+        depth: 1,
+      })
+      return result.docs
+    },
+    ['brands'],
+    [CACHE_TAGS.brands],
+  )(locale)
+
+export async function findBrandBySlug(
+  slug: string,
+  locale: StorefrontLocale,
+): Promise<Brand | null> {
+  const payload = await getPayloadClient()
+
+  const result = await payload.find({
+    collection: 'brands',
+    locale,
+    where: { and: [{ slug: { equals: slug } }, { isActive: { equals: true } }] },
+    limit: 1,
+    depth: 1,
+  })
+
+  return result.docs[0] ?? null
+}
 
 export async function findCategoryBySlug(
   slug: string,

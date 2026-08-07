@@ -15,6 +15,7 @@ export async function Header({ locale }: { locale: StorefrontLocale }) {
   const links = [
     { href: '/products', label: t('products') },
     { href: '/categories', label: t('categories') },
+    { href: '/brands', label: t('brands') },
     { href: '/about', label: t('about') },
     { href: '/contact', label: t('contact') },
   ]
