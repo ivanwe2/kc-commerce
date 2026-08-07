@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server'
 
 import { MediaImage } from '@/components/MediaImage'
 import { ProductCard } from '@/components/product/ProductCard'
+import { referencePricesForMany } from '@/lib/discount'
 import { Pagination } from '@/components/ui/Pagination'
 import { Link } from '@/i18n/routing'
 import { findBrandBySlug, findProducts, getPayloadClient, type StorefrontLocale } from '@/lib/payload'
@@ -67,6 +68,9 @@ export default async function BrandPage({
     limit: PAGE_SIZE,
   })
 
+  // One history query for the whole page, not one per card.
+  const references = await referencePricesForMany(await getPayloadClient(), results.docs)
+
   return (
     <main className="container-page py-8">
       <nav aria-label="Breadcrumb" className="text-sm text-muted">
@@ -107,7 +111,13 @@ export default async function BrandPage({
         <>
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {results.docs.map((product, index) => (
-              <ProductCard key={product.id} product={product} locale={locale} priority={index < 4} />
+              <ProductCard
+                key={product.id}
+                product={product}
+                locale={locale}
+                priority={index < 4}
+                referencePrice={references.get(product.id)}
+              />
             ))}
           </div>
           <Pagination

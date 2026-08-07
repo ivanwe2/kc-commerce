@@ -4,8 +4,15 @@ import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { BannerStrip } from '@/components/BannerStrip'
 import { ProductFilters } from '@/components/product/ProductFilters'
 import { ProductCard } from '@/components/product/ProductCard'
+import { referencePricesForMany } from '@/lib/discount'
 import { Pagination } from '@/components/ui/Pagination'
-import { findBrands, findCategories, findProducts, type StorefrontLocale } from '@/lib/payload'
+import {
+  findBrands,
+  findCategories,
+  findProducts,
+  getPayloadClient,
+  type StorefrontLocale,
+} from '@/lib/payload'
 
 export const revalidate = 3600
 
@@ -93,6 +100,9 @@ export default async function ProductsPage({
     maxPrice,
   })
 
+  // One history query for the whole page, not one per card.
+  const references = await referencePricesForMany(await getPayloadClient(), results.docs)
+
   return (
     <main className="container-page py-8">
       <BannerStrip placement="listing_top" locale={storefrontLocale} />
@@ -118,6 +128,7 @@ export default async function ProductsPage({
                     product={product}
                     locale={locale}
                     priority={index < 3}
+                    referencePrice={references.get(product.id)}
                   />
                 ))}
               </div>

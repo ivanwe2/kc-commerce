@@ -4,9 +4,16 @@ import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { BannerStrip } from '@/components/BannerStrip'
 import { MediaImage } from '@/components/MediaImage'
 import { ProductCard } from '@/components/product/ProductCard'
+import { referencePricesForMany } from '@/lib/discount'
 import { buttonVariants } from '@/components/ui/Button'
 import { Link } from '@/i18n/routing'
-import { findCategories, findProducts, getSettings, type StorefrontLocale } from '@/lib/payload'
+import {
+  findCategories,
+  findProducts,
+  getPayloadClient,
+  getSettings,
+  type StorefrontLocale,
+} from '@/lib/payload'
 
 // Rebuilt at most twice an hour. Featured products and categories change rarely,
 // and on a metered platform re-rendering identical markup per request is waste.
@@ -33,6 +40,11 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
     findProducts({ locale: storefrontLocale, featuredOnly: true, limit: 8 }),
     findCategories(storefrontLocale),
     findProducts({ locale: storefrontLocale, onSaleOnly: true, limit: 4 }),
+  ])
+
+  const references = await referencePricesForMany(await getPayloadClient(), [
+    ...featured.docs,
+    ...onSale.docs,
   ])
 
   return (
@@ -90,6 +102,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                 product={product}
                 locale={locale}
                 priority={index < 4}
+                referencePrice={references.get(product.id)}
               />
             ))}
           </div>
@@ -114,6 +127,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                 // Only the first row is above the fold; eager-loading the rest
                 // would compete with it for bandwidth and hurt LCP.
                 priority={index < 4}
+                referencePrice={references.get(product.id)}
               />
             ))}
           </div>
