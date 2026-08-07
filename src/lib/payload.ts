@@ -3,6 +3,7 @@ import { getPayload } from 'payload'
 import type { Payload, TypedLocale, Where } from 'payload'
 
 import { CACHE_TAGS, cachedQuery } from './cache'
+import { searchProductIds } from './search'
 import type { Brand, Category, Product, Setting } from '@/payload-types'
 
 /**
@@ -81,13 +82,31 @@ export async function findProducts({
   if (typeof maxPrice === 'number') and.push({ basePrice: { less_than_equal: maxPrice } })
 
   if (search) {
-    and.push({
-      or: [
-        { title: { like: search } },
-        { shortDescription: { like: search } },
-        { sku: { like: search } },
-      ],
-    })
+    /**
+     * FTS5 first, LIKE only as a fallback.
+     *
+     * LIKE '%term%' cannot use an index and scans the table — on D1 that is
+     * metered as well as slow. FTS also ranks by relevance and matches prefixes,
+     * so "почист преп" finds "почистващ препарат".
+     *
+     * The fallback matters on a deployment where the search migration has not
+     * run yet: search degrades rather than 500s.
+     */
+    const { ids, usedFts } = await searchProductIds(search, 200)
+
+    if (usedFts) {
+      // No matches is a real answer, not a reason to fall back — an impossible
+      // id keeps the result set empty instead of silently returning everything.
+      and.push({ id: { in: ids.length > 0 ? ids : [-1] } })
+    } else {
+      and.push({
+        or: [
+          { title: { like: search } },
+          { shortDescription: { like: search } },
+          { sku: { like: search } },
+        ],
+      })
+    }
   }
 
   return payload.find({

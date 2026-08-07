@@ -1,11 +1,18 @@
 import { defineCloudflareConfig } from '@opennextjs/cloudflare/config'
+import r2IncrementalCache from '@opennextjs/cloudflare/overrides/incremental-cache/r2-incremental-cache'
 
 /**
  * OpenNext compiles the Next.js build into a single Cloudflare Worker.
  *
- * Phase 8 will enable the R2 incremental cache here so that `revalidate` on
- * product and category pages actually caches. Until then every request renders
- * dynamically, which is correct but not fast — and on a metered platform,
- * "not fast" also means "not cheap".
+ * The incremental cache is the important line here. Every storefront page
+ * declares `revalidate`, but on Cloudflare that only does anything if OpenNext
+ * has somewhere to persist rendered output. WITHOUT this, `revalidate` silently
+ * degrades to rendering every request from scratch — the pages stay correct, so
+ * nothing looks broken, they are simply slow and metered as if they were fully
+ * dynamic.
+ *
+ * Backed by the NEXT_INC_CACHE_R2_BUCKET binding in wrangler.jsonc.
  */
-export default defineCloudflareConfig({})
+export default defineCloudflareConfig({
+  incrementalCache: r2IncrementalCache,
+})
