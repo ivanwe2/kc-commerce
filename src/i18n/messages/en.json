@@ -48,7 +48,12 @@
     "noProducts": "No products found",
     "productCount": "Products ({count})",
     "addedToCart": "Added to cart",
-    "saving": "Saving"
+    "saving": "Saving",
+    "onSale": "Sale",
+    "bulkUpTo": "Up to -{percent}% bulk",
+    "saleEndsIn": "Offer ends {date}",
+    "saleSection": "On sale",
+    "viewAllSales": "View all offers"
   },
   "units": {
     "piece": "pcs",
@@ -157,7 +162,8 @@
     "sortPriceDesc": "Price: high to low",
     "sortNameAsc": "Name: A-Z",
     "apply": "Apply",
-    "reset": "Reset filters"
+    "reset": "Reset filters",
+    "onSaleFilter": "On sale only"
   },
   "errors": {
     "notFoundTitle": "Page not found",

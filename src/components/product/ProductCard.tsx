@@ -1,9 +1,10 @@
 import { getTranslations } from 'next-intl/server'
 
 import { MediaImage } from '@/components/MediaImage'
+import { PriceDisplay } from '@/components/product/PriceDisplay'
 import { Badge } from '@/components/ui/Badge'
 import { Link } from '@/i18n/routing'
-import { formatPrice } from '@/lib/money'
+import { displayPrice, isSaleActive } from '@/lib/discount'
 import { lowestPrice } from '@/lib/pricing'
 import type { PricingTier } from '@/lib/pricing'
 import type { Product } from '@/payload-types'
@@ -19,16 +20,37 @@ export async function ProductCard({
   product,
   locale,
   priority = false,
+  referencePrice,
 }: {
   product: Product
   locale: string
   priority?: boolean
+  /**
+   * The 30-day reference price, when this card is rendered in a context that
+   * has already looked it up. Cards in a grid deliberately do NOT fetch it
+   * themselves — that would be one query per card.
+   */
+  referencePrice?: number | null
 }) {
   const t = await getTranslations('product')
 
   const tiers = (product.pricingTiers ?? []) as PricingTier[]
   const hasTiers = tiers.length > 0
-  const displayPrice = hasTiers ? lowestPrice(tiers, product.basePrice) : product.basePrice
+  const onSale = isSaleActive(product)
+
+  /**
+   * The headline figure is the price for ONE unit, not the cheapest bulk tier.
+   *
+   * Showing "from €3.20" when a single unit costs €4.50 sends the customer to a
+   * page displaying a different, higher number — and under the Consumer
+   * Protection Act an advertised price should be one the buyer can actually
+   * obtain. The bulk saving is advertised with a badge instead.
+   */
+  const unitPrice = displayPrice(product)
+  const bestBulk = hasTiers ? lowestPrice(tiers, product.basePrice) : unitPrice
+  const bulkSaving =
+    hasTiers && bestBulk < unitPrice ? Math.round((1 - bestBulk / unitPrice) * 100) : 0
+
   const isOutOfStock = (product.stock ?? 0) <= 0
 
   const firstImage = product.images?.[0]?.image
@@ -53,9 +75,12 @@ export async function ProductCard({
           </div>
         )}
 
-        {hasTiers && !isOutOfStock && (
-          <div className="absolute top-2 left-2">
-            <Badge variant="info">{t('bulkPricing')}</Badge>
+        {!isOutOfStock && (
+          <div className="absolute top-2 left-2 flex flex-col items-start gap-1">
+            {onSale && <Badge variant="danger">{t('onSale')}</Badge>}
+            {bulkSaving > 0 && (
+              <Badge variant="info">{t('bulkUpTo', { percent: bulkSaving })}</Badge>
+            )}
           </div>
         )}
       </div>
@@ -72,10 +97,11 @@ export async function ProductCard({
         </h3>
 
         <div className="mt-auto pt-2">
-          <p className="text-lg font-bold text-price">
-            {hasTiers && <span className="text-sm font-normal text-muted">{t('from')} </span>}
-            {formatPrice(displayPrice, locale)}
-          </p>
+          <PriceDisplay
+            price={unitPrice}
+            reference={onSale ? referencePrice : null}
+            locale={locale}
+          />
         </div>
       </div>
     </article>

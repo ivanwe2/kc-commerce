@@ -63,7 +63,7 @@ export function ProductFilters({ categories }: { categories: Category[] }) {
     })
   }
 
-  const hasFilters = ['q', 'category', 'min', 'max', 'inStock', 'sort'].some((key) =>
+  const hasFilters = ['q', 'category', 'min', 'max', 'inStock', 'onSale', 'sort'].some((key) =>
     searchParams.has(key),
   )
 
@@ -134,6 +134,19 @@ export function ProductFilters({ categories }: { categories: Category[] }) {
           />
         </div>
       </fieldset>
+
+      <div className="flex items-center gap-2">
+        <input
+          id="filter-sale"
+          type="checkbox"
+          checked={optimisticParams.get('onSale') === '1'}
+          onChange={(event) => update('onSale', event.target.checked ? '1' : null)}
+          className="size-4 rounded border-border-strong text-primary focus:ring-primary/20"
+        />
+        <label htmlFor="filter-sale" className="text-sm text-body">
+          {t('onSaleFilter')}
+        </label>
+      </div>
 
       <div className="flex items-center gap-2">
         <input

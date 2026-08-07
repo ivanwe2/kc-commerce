@@ -230,6 +230,25 @@ export const Orders: CollectionConfig = {
             { name: 'totalPrice', type: 'number', required: true, min: 0 },
           ],
         },
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'referencePrice',
+              type: 'number',
+              min: 0,
+              admin: {
+                description:
+                  'The 30-day reference price shown struck through at the time of sale. Kept so a discount dispute months later can be answered from the record.',
+              },
+            },
+            {
+              name: 'wasOnSale',
+              type: 'checkbox',
+              defaultValue: false,
+            },
+          ],
+        },
       ],
     },
 

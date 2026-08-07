@@ -58,6 +58,7 @@ export default async function ProductsPage({
   const categorySlug = single(query.category)
   const sortKey = single(query.sort) ?? 'newest'
   const inStockOnly = single(query.inStock) === '1'
+  const onSaleOnly = single(query.onSale) === '1'
   const minPrice = positiveNumber(single(query.min))
   const maxPrice = positiveNumber(single(query.max))
 
@@ -77,6 +78,7 @@ export default async function ProductsPage({
     // ones that are not indexed and would scan the table.
     sort: SORT_MAP[sortKey] ?? SORT_MAP.newest,
     inStockOnly,
+    onSaleOnly,
     minPrice,
     maxPrice,
   })

@@ -4,6 +4,7 @@ import { activeOrAuthenticated, isAdminOrEditor } from '@/access'
 import { roundMoney } from '@/lib/money'
 import { validatePricingTiers, type PricingTier } from '@/lib/pricing'
 import { slugify } from '@/lib/slugify'
+import { recordPriceHistory } from './hooks/priceHistory'
 import { revalidateProduct, revalidateProductDelete } from './hooks/revalidate'
 
 export const Products: CollectionConfig = {
@@ -18,7 +19,7 @@ export const Products: CollectionConfig = {
 
   admin: {
     useAsTitle: 'title',
-    defaultColumns: ['title', 'sku', 'basePrice', 'stock', 'isActive'],
+    defaultColumns: ['title', 'sku', 'basePrice', 'salePrice', 'stock', 'isActive'],
     listSearchableFields: ['title', 'sku'],
     group: 'Catalogue',
   },
@@ -124,6 +125,50 @@ export const Products: CollectionConfig = {
       ],
     },
 
+    // --- Sale ---------------------------------------------------------------
+    {
+      // A collapsible is presentational only — it takes no `name`, and the
+      // fields inside it are stored at the top level of the document.
+      type: 'collapsible',
+      label: 'Sale / discount',
+      admin: {
+        initCollapsed: true,
+        description:
+          'Announcing a reduction is legally regulated: the storefront automatically shows the lowest price from the previous 30 days as the struck-through reference. Leave the sale price empty for no sale.',
+      },
+      fields: [
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'salePrice',
+              type: 'number',
+              min: 0,
+              admin: {
+                description: 'Discounted unit price in EUR. Must be lower than the base price.',
+              },
+            },
+            {
+              name: 'saleStartsAt',
+              type: 'date',
+              admin: {
+                description: 'Optional. Empty means the sale starts immediately.',
+                date: { pickerAppearance: 'dayAndTime' },
+              },
+            },
+            {
+              name: 'saleEndsAt',
+              type: 'date',
+              admin: {
+                description: 'Optional. Empty means the sale runs until removed.',
+                date: { pickerAppearance: 'dayAndTime' },
+              },
+            },
+          ],
+        },
+      ],
+    },
+
     // --- Stock --------------------------------------------------------------
     {
       type: 'row',
@@ -220,7 +265,8 @@ export const Products: CollectionConfig = {
   ],
 
   hooks: {
-    afterChange: [revalidateProduct],
+    // Price history first: it must be recorded even if cache invalidation fails.
+    afterChange: [recordPriceHistory, revalidateProduct],
     afterDelete: [revalidateProductDelete],
     beforeValidate: [
       async ({ data, req, operation, originalDoc }) => {
@@ -262,6 +308,25 @@ export const Products: CollectionConfig = {
             if (typeof tier.pricePerUnit === 'number') {
               tier.pricePerUnit = roundMoney(tier.pricePerUnit)
             }
+          }
+        }
+
+        if (typeof data.salePrice === 'number') {
+          data.salePrice = roundMoney(data.salePrice)
+
+          // Rejected loudly rather than ignored. A sale price that is not lower
+          // than the base price would either display as a false reduction or
+          // silently do nothing, and both are worse than an error message.
+          if (typeof data.basePrice === 'number' && data.salePrice >= data.basePrice) {
+            throw new Error(
+              `Sale price (${data.salePrice}) must be lower than the base price (${data.basePrice}).`,
+            )
+          }
+        }
+
+        if (data.saleStartsAt && data.saleEndsAt) {
+          if (new Date(data.saleStartsAt) >= new Date(data.saleEndsAt)) {
+            throw new Error('The sale end date must be after the start date.')
           }
         }
 

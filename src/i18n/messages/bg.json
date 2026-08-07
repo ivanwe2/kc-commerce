@@ -48,7 +48,12 @@
     "noProducts": "Няма намерени продукти",
     "productCount": "Продукти ({count})",
     "addedToCart": "Добавено в количката",
-    "saving": "Отстъпка"
+    "saving": "Отстъпка",
+    "onSale": "Промоция",
+    "bulkUpTo": "До -{percent}% на едро",
+    "saleEndsIn": "Промоцията изтича на {date}",
+    "saleSection": "Промоции",
+    "viewAllSales": "Виж всички промоции"
   },
   "units": {
     "piece": "бр.",
@@ -157,7 +162,8 @@
     "sortPriceDesc": "Цена: висока към ниска",
     "sortNameAsc": "Име: А-Я",
     "apply": "Приложи",
-    "reset": "Изчисти филтрите"
+    "reset": "Изчисти филтрите",
+    "onSaleFilter": "Само промоции"
   },
   "errors": {
     "notFoundTitle": "Страницата не е намерена",
