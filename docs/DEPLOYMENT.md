@@ -7,6 +7,33 @@ Times are rough. The whole thing is about 45 minutes, most of it waiting for DNS
 
 ---
 
+## The short version
+
+Do these in order. Each step is verifiable before you move on.
+
+| # | Step | Time | Blocking? |
+|---|---|---|---|
+| 0 | Cloudflare account + **Workers Paid ($5/mo)** | 5 min | **Yes — nothing deploys without it** |
+| 1 | Buy a domain (Cloudflare Registrar is simplest) | 10 min | No, but needed for §4-5 |
+| 2 | `wrangler d1 create` + 2 × `r2 bucket create` | 5 min | **Yes** |
+| 3 | `wrangler secret put` × 4 | 3 min | **Yes** |
+| 4 | `pnpm deploy`, then create the admin user **immediately** | 5 min | **Yes** |
+| 5 | Fill in Settings → Company (legal details) | 5 min | **Yes, before launch** |
+| 6 | Attach the custom domain | 15 min | Before launch |
+| 7 | Enable Image Transformations, flip `NEXT_PUBLIC_CF_IMAGES` | 2 min | No |
+| 8 | Cache Rules | 5 min | No |
+| 9 | WAF, Bot Fight Mode | 5 min | Before launch |
+| 10 | Resend domain + DNS records | 10 min | Before launch |
+| 11 | Wire up deploys (§8) | 5 min | No |
+
+Roughly **45 minutes of work**, plus DNS propagation.
+
+Two things only you can supply, and both block launch: your **real company
+details** (UIC/Bulstat, registered address) and a **lawyer's review of the legal
+copy**. Everything else on this list is mechanical.
+
+---
+
 ## 0. Before you start
 
 You need:
@@ -17,6 +44,23 @@ You need:
   bundle is ~5.7 MB against the paid 10 MB limit.
 - A domain (can be bought through Cloudflare or transferred in)
 - A Resend account for order emails
+
+---
+
+## 0b. Buy a domain (~10 min)
+
+Any registrar works, but **Cloudflare Registrar** is the least friction: the
+domain lands in the same account, nameservers are already correct, DNS is
+instant, and it sells at cost with no markup or renewal surprise.
+
+`.bg` domains cannot be registered through Cloudflare — they need a Bulgarian
+registrar (register.bg and others). If you take that route, buy the domain
+there, then add the site to Cloudflare and change the nameservers at the
+registrar to the two Cloudflare gives you. Everything downstream is identical.
+
+You can complete steps 1-3 and deploy to `*.workers.dev` before the domain
+exists. The domain is only needed for the custom domain, image transformations
+and email.
 
 ---
 
@@ -190,23 +234,52 @@ order confirmations is effectively the same as not sending it.
 
 ---
 
-## 8. GitHub Actions (optional, ~5 min)
+## 8. Automating deploys (~5 min)
 
-CI (lint, typecheck, build, bundle-size check) runs on every PR already and
-needs no credentials.
+CI — lint, typecheck, migrate, build, bundle-size check — already runs on every
+pull request and needs **no credentials at all**. That part is done.
 
-For deploys from GitHub, add repository secrets:
+For *deploying*, there are two options, and they are not equivalent.
 
-- `CLOUDFLARE_API_TOKEN` — scopes: *Workers Scripts: Edit*, *D1: Edit*,
-  *R2: Edit*, *Account Settings: Read*
-- `CLOUDFLARE_ACCOUNT_ID`
-- `PAYLOAD_SECRET`
+### Option A — the GitHub Actions workflow in this repo (recommended)
 
-and a repository variable `NEXT_PUBLIC_SITE_URL`.
+Add these repository secrets (Settings → Secrets and variables → Actions):
 
-Then run the **Deploy** workflow manually and pick an environment. It is
-deliberately manual rather than automatic on merge: this shop takes real money,
-so a deploy should be a decision rather than a side effect.
+| Secret | Value |
+|---|---|
+| `CLOUDFLARE_API_TOKEN` | scopes: *Workers Scripts: Edit*, *D1: Edit*, *R2: Edit*, *Account Settings: Read* |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare dashboard → right sidebar |
+| `PAYLOAD_SECRET` | the same value you set with `wrangler secret put` |
+
+and one repository **variable**: `NEXT_PUBLIC_SITE_URL`.
+
+Then run the **Deploy** workflow from the Actions tab and pick staging or
+production.
+
+**Why this one:** it runs `payload migrate` *before* deploying the Worker, so the
+schema is never behind the code. It is also deliberately manual — this shop takes
+real money, and a deploy should be a decision rather than a side effect of
+merging a typo fix. Change the trigger to `push: branches: [main]` once you are
+comfortable with that.
+
+### Option B — Cloudflare Workers Builds (git integration)
+
+Workers → your Worker → **Settings → Builds → Connect repository**. Cloudflare
+then builds and deploys on every push. Genuinely a two-minute setup.
+
+**The catch, and it is a real one:** Workers Builds runs a build command and
+deploys. It has no notion of "run database migrations first, and only deploy if
+they succeed". You would have to fold migrations into the build command, and a
+failed migration mid-build leaves you with a half-applied schema and a Worker
+that may already be live against it.
+
+For a static site or an API with no schema, Workers Builds is the easy right
+answer. For this project — a shop with a database, real orders and money — the
+explicit migrate-then-deploy ordering is worth the extra five minutes of setup.
+
+**Recommendation:** use Option A. Revisit Workers Builds if you later want
+preview deploys per pull request, which it does very well; the two can coexist,
+with Workers Builds handling previews and Actions handling production.
 
 ---
 
