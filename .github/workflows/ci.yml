@@ -43,6 +43,15 @@ jobs:
         # sync with wrangler.jsonc rather than a stale artefact.
         run: pnpm exec wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts
 
+      - name: Apply migrations to the local D1 database
+        # `next build` runs generateStaticParams, which QUERIES the database for
+        # product, category and brand slugs. A fresh CI checkout has an empty
+        # Miniflare D1 with no tables, so without this the build fails with
+        # "no such table: brands" — nothing to do with Cloudflare credentials.
+        env:
+          PAYLOAD_SECRET: ci-build-only-secret-not-used-for-signing
+        run: pnpm payload migrate
+
       - name: Lint
         run: pnpm lint
 
