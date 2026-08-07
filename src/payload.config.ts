@@ -13,6 +13,7 @@ import { Counters } from './collections/Counters'
 import { Media } from './collections/Media'
 import { Orders } from './collections/Orders'
 import { Pages } from './collections/Pages'
+import { PriceHistory } from './collections/PriceHistory'
 import { Products } from './collections/Products'
 import { Users } from './collections/Users'
 import { Settings } from './globals/Settings'
@@ -133,7 +134,7 @@ export default buildConfig({
     },
   },
 
-  collections: [Products, Categories, Orders, Pages, Media, Users, Counters],
+  collections: [Products, Categories, Orders, Pages, Media, Users, Counters, PriceHistory],
 
   globals: [Settings],
 

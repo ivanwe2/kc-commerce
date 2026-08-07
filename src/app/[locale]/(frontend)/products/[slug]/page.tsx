@@ -5,9 +5,10 @@ import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { AddToCartButton } from '@/components/product/AddToCartButton'
 import { ProductCard } from '@/components/product/ProductCard'
 import { ProductGallery } from '@/components/product/ProductGallery'
+import { PriceDisplay } from '@/components/product/PriceDisplay'
 import { StockBadge } from '@/components/ui/Badge'
 import { Link } from '@/i18n/routing'
-import { formatPrice } from '@/lib/money'
+import { displayPrice, isSaleActive, referencePrice } from '@/lib/discount'
 import type { PricingTier } from '@/lib/pricing'
 import {
   findProductBySlug,
@@ -93,6 +94,12 @@ export default async function ProductPage({
   const firstImageUrl =
     firstImage && typeof firstImage === 'object' ? (firstImage.url ?? null) : null
 
+  const onSale = isSaleActive(product)
+  const unitPrice = displayPrice(product)
+  // Only looked up when a sale is running — it is a query, and there is nothing
+  // to strike through otherwise.
+  const reference = onSale ? await referencePrice(await getPayloadClient(), product) : null
+
   // Structured data. Priced from basePrice with lowPrice reflecting bulk tiers,
   // so search results do not advertise a price the customer cannot actually get
   // at quantity one.
@@ -104,7 +111,7 @@ export default async function ProductPage({
     sku: product.sku,
     offers: {
       '@type': 'Offer',
-      price: product.basePrice.toFixed(2),
+      price: unitPrice.toFixed(2),
       priceCurrency: 'EUR',
       availability: stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
       seller: { '@type': 'Organization', name: 'KC Trading' },
@@ -161,12 +168,17 @@ export default async function ProductPage({
           )}
 
           <div className="mt-6">
-            <p className="text-2xl font-bold text-price">
-              {formatPrice(product.basePrice, locale)}
-              <span className="ml-2 text-sm font-normal text-muted">
-                / {units(product.unit ?? 'piece')}
-              </span>
-            </p>
+            <PriceDisplay price={unitPrice} reference={reference} locale={locale} size="lg" />
+            <p className="mt-1 text-sm text-muted">/ {units(product.unit ?? 'piece')}</p>
+            {onSale && product.saleEndsAt && (
+              <p className="mt-1 text-sm text-danger-foreground">
+                {t('saleEndsIn', {
+                  date: new Date(product.saleEndsAt).toLocaleDateString(
+                    locale === 'bg' ? 'bg-BG' : 'en-GB',
+                  ),
+                })}
+              </p>
+            )}
           </div>
 
           <div className="mt-4 flex items-center gap-3">
@@ -199,7 +211,9 @@ export default async function ProductPage({
                 slug: product.slug ?? '',
                 title: product.title,
                 image: firstImageUrl,
-                basePrice: product.basePrice,
+                // The cart prices from this, so it must be the sale price when
+                // one is live — otherwise the cart quotes more than the page did.
+                basePrice: unitPrice,
                 maxStock: stock,
                 minOrderQuantity: product.minOrderQuantity ?? 1,
                 unit: product.unit ?? 'piece',

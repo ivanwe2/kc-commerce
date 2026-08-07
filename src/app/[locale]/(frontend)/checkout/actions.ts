@@ -4,9 +4,9 @@ import config from '@payload-config'
 import { getPayload } from 'payload'
 
 import { formatOrderNumber, nextCounterValue, orderCounterKey } from '@/lib/counters'
+import { effectiveUnitPrice, isSaleActive, referencePrice } from '@/lib/discount'
 import { sendOrderConfirmation } from '@/lib/email'
 import { multiplyMoney, roundMoney, sumMoney } from '@/lib/money'
-import { calculateTierPrice, type PricingTier } from '@/lib/pricing'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { calculateShippingCost, courierFor, type ShippingMethod } from '@/lib/shipping'
 import { releaseStock, reserveStock, type StockRequest } from '@/lib/stock'
@@ -78,6 +78,8 @@ export async function createOrder(input: unknown): Promise<CheckoutResult> {
     quantity: number
     unitPrice: number
     totalPrice: number
+    referencePrice: number
+    wasOnSale: boolean
   }
 
   const lines: PricedLine[] = []
@@ -94,12 +96,15 @@ export async function createOrder(input: unknown): Promise<CheckoutResult> {
       return { success: false, errors: { form: 'fieldRequired' } }
     }
 
-    // Server-side price. The cart's number is never consulted.
-    const unitPrice = calculateTierPrice(
-      item.quantity,
-      (product.pricingTiers ?? []) as PricingTier[],
-      product.basePrice,
-    )
+    /**
+     * Server-side price. The cart's number is never consulted, and sale
+     * eligibility is re-evaluated against the clock right now — an expired sale
+     * must not be honoured because a stale cart still believes in it, and a
+     * scheduled one must not start early.
+     */
+    const now = new Date()
+    const unitPrice = effectiveUnitPrice(product, item.quantity, now)
+    const onSale = isSaleActive(product, now)
 
     lines.push({
       productId: product.id,
@@ -110,6 +115,9 @@ export async function createOrder(input: unknown): Promise<CheckoutResult> {
       quantity: item.quantity,
       unitPrice,
       totalPrice: multiplyMoney(unitPrice, item.quantity),
+      // Recorded even when no sale ran, so every line can be audited the same way.
+      referencePrice: onSale ? await referencePrice(payload, product, now) : product.basePrice,
+      wasOnSale: onSale,
     })
   }
 
@@ -189,6 +197,8 @@ export async function createOrder(input: unknown): Promise<CheckoutResult> {
           quantity: line.quantity,
           unitPrice: line.unitPrice,
           totalPrice: line.totalPrice,
+          referencePrice: line.referencePrice,
+          wasOnSale: line.wasOnSale,
         })),
         subtotal,
         shippingCost,

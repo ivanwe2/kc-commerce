@@ -35,6 +35,7 @@ type ProductQueryOptions = {
   inStockOnly?: boolean
   sort?: string
   featuredOnly?: boolean
+  onSaleOnly?: boolean
 }
 
 /** Public product listing. Only active products are ever returned. */
@@ -49,6 +50,7 @@ export async function findProducts({
   inStockOnly,
   sort = '-createdAt',
   featuredOnly,
+  onSaleOnly,
 }: ProductQueryOptions) {
   const payload = await getPayloadClient()
 
@@ -57,6 +59,21 @@ export async function findProducts({
   if (categoryId) and.push({ category: { equals: categoryId } })
   if (featuredOnly) and.push({ isFeatured: { equals: true } })
   if (inStockOnly) and.push({ stock: { greater_than: 0 } })
+
+  if (onSaleOnly) {
+    /**
+     * "On sale" filtered in the database, not in JavaScript after the fact —
+     * post-filtering would break pagination counts.
+     *
+     * The date bounds mirror isSaleActive(): a null start means "already
+     * started" and a null end means "no end", so both must be treated as
+     * satisfying the window rather than excluded.
+     */
+    const now = new Date().toISOString()
+    and.push({ salePrice: { greater_than: 0 } })
+    and.push({ or: [{ saleStartsAt: { exists: false } }, { saleStartsAt: { less_than_equal: now } }] })
+    and.push({ or: [{ saleEndsAt: { exists: false } }, { saleEndsAt: { greater_than_equal: now } }] })
+  }
   if (typeof minPrice === 'number') and.push({ basePrice: { greater_than_equal: minPrice } })
   if (typeof maxPrice === 'number') and.push({ basePrice: { less_than_equal: maxPrice } })
 

@@ -27,10 +27,11 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   const productT = await getTranslations('product')
   const trust = await getTranslations('trust')
 
-  const [settings, featured, categories] = await Promise.all([
+  const [settings, featured, categories, onSale] = await Promise.all([
     getSettings(storefrontLocale),
     findProducts({ locale: storefrontLocale, featuredOnly: true, limit: 8 }),
     findCategories(storefrontLocale),
+    findProducts({ locale: storefrontLocale, onSaleOnly: true, limit: 4 }),
   ])
 
   return (
@@ -60,6 +61,37 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           </Link>
         </div>
       </section>
+
+      {/*
+        Sale section sits above featured: a live promotion is the most
+        time-sensitive thing on the page, and burying it below the evergreen
+        featured grid wastes it. Rendered only when something is actually on
+        sale, so the homepage never shows an empty "Offers" heading.
+      */}
+      {onSale.docs.length > 0 && (
+        <section className="container-page py-12">
+          <div className="flex items-baseline justify-between gap-4">
+            <h2 className="text-xl font-semibold text-heading">{productT('saleSection')}</h2>
+            <Link
+              href="/products?onSale=1"
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              {productT('viewAllSales')}
+            </Link>
+          </div>
+
+          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {onSale.docs.map((product, index) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                locale={locale}
+                priority={index < 4}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       {featured.docs.length > 0 && (
         <section className="container-page py-12">

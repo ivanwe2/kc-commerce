@@ -74,6 +74,7 @@ export interface Config {
     media: Media;
     users: User;
     counters: Counter;
+    'price-history': PriceHistory;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -88,6 +89,7 @@ export interface Config {
     media: MediaSelect<false> | MediaSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     counters: CountersSelect<false> | CountersSelect<true>;
+    'price-history': PriceHistorySelect<false> | PriceHistorySelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -183,6 +185,18 @@ export interface Product {
         id?: string | null;
       }[]
     | null;
+  /**
+   * Discounted unit price in EUR. Must be lower than the base price.
+   */
+  salePrice?: number | null;
+  /**
+   * Optional. Empty means the sale starts immediately.
+   */
+  saleStartsAt?: string | null;
+  /**
+   * Optional. Empty means the sale runs until removed.
+   */
+  saleEndsAt?: string | null;
   stock: number;
   minOrderQuantity: number;
   /**
@@ -321,6 +335,11 @@ export interface Order {
     quantity: number;
     unitPrice: number;
     totalPrice: number;
+    /**
+     * The 30-day reference price shown struck through at the time of sale. Kept so a discount dispute months later can be answered from the record.
+     */
+    referencePrice?: number | null;
+    wasOnSale?: boolean | null;
     id?: string | null;
   }[];
   /**
@@ -440,6 +459,23 @@ export interface Counter {
   createdAt: string;
 }
 /**
+ * Automatic record of price changes, used to compute the 30-day reference price required for advertised discounts. Read-only by law and by design.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "price-history".
+ */
+export interface PriceHistory {
+  id: number;
+  product: number | Product;
+  /**
+   * The effective selling price at this moment — sale price if one was active.
+   */
+  price: number;
+  recordedAt: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -490,6 +526,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'counters';
         value: number | Counter;
+      } | null)
+    | ({
+        relationTo: 'price-history';
+        value: number | PriceHistory;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -552,6 +592,9 @@ export interface ProductsSelect<T extends boolean = true> {
         pricePerUnit?: T;
         id?: T;
       };
+  salePrice?: T;
+  saleStartsAt?: T;
+  saleEndsAt?: T;
   stock?: T;
   minOrderQuantity?: T;
   lowStockThreshold?: T;
@@ -628,6 +671,8 @@ export interface OrdersSelect<T extends boolean = true> {
         quantity?: T;
         unitPrice?: T;
         totalPrice?: T;
+        referencePrice?: T;
+        wasOnSale?: T;
         id?: T;
       };
   subtotal?: T;
@@ -713,6 +758,17 @@ export interface UsersSelect<T extends boolean = true> {
 export interface CountersSelect<T extends boolean = true> {
   key?: T;
   value?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "price-history_select".
+ */
+export interface PriceHistorySelect<T extends boolean = true> {
+  product?: T;
+  price?: T;
+  recordedAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }
