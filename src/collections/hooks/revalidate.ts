@@ -70,6 +70,15 @@ export const revalidateBrand: CollectionAfterChangeHook = ({ doc, req }) => {
   return doc
 }
 
+export const revalidateBanner: CollectionAfterChangeHook = ({ doc, req }) => {
+  try {
+    revalidateTag('banners', EXPIRE_NOW)
+  } catch (error) {
+    req.payload.logger.warn({ err: error }, 'revalidateTag failed')
+  }
+  return doc
+}
+
 /** Settings appear in the header and footer of every page, so flush everything. */
 export const revalidateSettings: GlobalAfterChangeHook = ({ doc, req }) => {
   try {

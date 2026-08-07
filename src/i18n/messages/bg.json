@@ -54,7 +54,9 @@
     "bulkUpTo": "До -{percent}% на едро",
     "saleEndsIn": "Промоцията изтича на {date}",
     "saleSection": "Промоции",
-    "viewAllSales": "Виж всички промоции"
+    "viewAllSales": "Виж всички промоции",
+    "recentlyViewed": "Наскоро разгледани",
+    "frequentlyBought": "Често купувани заедно"
   },
   "units": {
     "piece": "бр.",

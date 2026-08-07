@@ -5,14 +5,15 @@ import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { AddToCartButton } from '@/components/product/AddToCartButton'
 import { ProductCard } from '@/components/product/ProductCard'
 import { ProductGallery } from '@/components/product/ProductGallery'
+import { RecentlyViewed, TrackProductView } from '@/components/product/RecentlyViewed'
 import { PriceDisplay } from '@/components/product/PriceDisplay'
 import { StockBadge } from '@/components/ui/Badge'
 import { Link } from '@/i18n/routing'
 import { displayPrice, isSaleActive, referencePrice } from '@/lib/discount'
 import type { PricingTier } from '@/lib/pricing'
 import {
+  findCrossSell,
   findProductBySlug,
-  findRelatedProducts,
   getPayloadClient,
   type StorefrontLocale,
 } from '@/lib/payload'
@@ -85,7 +86,7 @@ export default async function ProductPage({
   const common = await getTranslations('common')
   const units = await getTranslations('units')
 
-  const related = await findRelatedProducts(product, storefrontLocale)
+  const related = await findCrossSell(product, storefrontLocale)
   const tiers = (product.pricingTiers ?? []) as PricingTier[]
   const stock = product.stock ?? 0
   const category = typeof product.category === 'object' ? product.category : null
@@ -234,7 +235,11 @@ export default async function ProductPage({
 
       {related.length > 0 && (
         <section className="mt-12">
-          <h2 className="text-xl font-semibold text-heading">{t('relatedProducts')}</h2>
+          <h2 className="text-xl font-semibold text-heading">
+            {product.crossSell && product.crossSell.length > 0
+              ? t('frequentlyBought')
+              : t('relatedProducts')}
+          </h2>
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {related.map((item) => (
               <ProductCard key={item.id} product={item} locale={locale} />
@@ -242,6 +247,17 @@ export default async function ProductPage({
           </div>
         </section>
       )}
+      <RecentlyViewed excludeId={product.id} />
+
+      <TrackProductView
+        product={{
+          id: product.id,
+          slug: product.slug ?? '',
+          title: product.title,
+          price: unitPrice,
+          image: firstImageUrl,
+        }}
+      />
     </main>
   )
 }

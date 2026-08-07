@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 
+import { BannerStrip } from '@/components/BannerStrip'
 import { ProductFilters } from '@/components/product/ProductFilters'
 import { ProductCard } from '@/components/product/ProductCard'
 import { Pagination } from '@/components/ui/Pagination'
@@ -94,6 +95,8 @@ export default async function ProductsPage({
 
   return (
     <main className="container-page py-8">
+      <BannerStrip placement="listing_top" locale={storefrontLocale} />
+
       <h1 className="text-2xl font-bold text-heading">
         {t('productCount', { count: results.totalDocs })}
       </h1>

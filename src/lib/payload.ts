@@ -4,7 +4,7 @@ import type { Payload, TypedLocale, Where } from 'payload'
 
 import { CACHE_TAGS, cachedQuery } from './cache'
 import { searchProductIds } from './search'
-import type { Brand, Category, Product, Setting } from '@/payload-types'
+import type { Banner, Brand, Category, Product, Setting } from '@/payload-types'
 
 /**
  * Data access for the storefront, all through Payload's Local API.
@@ -258,6 +258,65 @@ export const getSettings = (locale: StorefrontLocale): Promise<Setting> =>
     ['settings'],
     [CACHE_TAGS.settings],
   )(locale)
+
+/**
+ * Banners scheduled to be live right now, for a placement.
+ *
+ * The date window is applied in the query rather than filtered afterwards, so
+ * an unscheduled banner never reaches the client at all — including inside the
+ * HTML payload, where a future promotion would otherwise be readable by anyone
+ * viewing source.
+ *
+ * Not cached with a long tag: a banner going live is time-sensitive, and a
+ * short revalidate is the difference between a promotion starting on time and
+ * starting an hour late.
+ */
+export async function findActiveBanners(
+  placement: 'homepage_hero' | 'homepage_mid' | 'listing_top',
+  locale: StorefrontLocale,
+): Promise<Banner[]> {
+  const payload = await getPayloadClient()
+  const now = new Date().toISOString()
+
+  const result = await payload.find({
+    collection: 'banners',
+    locale,
+    where: {
+      and: [
+        { isActive: { equals: true } },
+        { placement: { equals: placement } },
+        { or: [{ startsAt: { exists: false } }, { startsAt: { less_than_equal: now } }] },
+        { or: [{ endsAt: { exists: false } }, { endsAt: { greater_than_equal: now } }] },
+      ],
+    },
+    limit: 5,
+    sort: 'sortOrder',
+    depth: 1,
+  })
+
+  return result.docs
+}
+
+/**
+ * Cross-sell suggestions: curated first, same-category as a fallback.
+ *
+ * An admin who has picked specific companions knows better than a category
+ * match, so their choice wins outright rather than being blended with automatic
+ * results.
+ */
+export async function findCrossSell(
+  product: Product,
+  locale: StorefrontLocale,
+  limit = 4,
+): Promise<Product[]> {
+  const curated = (product.crossSell ?? []).filter(
+    (entry): entry is Product => typeof entry === 'object' && entry !== null,
+  )
+
+  if (curated.length > 0) return curated.slice(0, limit)
+
+  return findRelatedProducts(product, locale, limit)
+}
 
 export async function findPageBySlug(slug: string, locale: StorefrontLocale) {
   const payload = await getPayloadClient()
