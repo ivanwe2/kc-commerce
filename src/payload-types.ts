@@ -69,6 +69,7 @@ export interface Config {
   collections: {
     products: Product;
     categories: Category;
+    brands: Brand;
     orders: Order;
     pages: Page;
     media: Media;
@@ -84,6 +85,7 @@ export interface Config {
   collectionsSelect: {
     products: ProductsSelect<false> | ProductsSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
+    brands: BrandsSelect<false> | BrandsSelect<true>;
     orders: OrdersSelect<false> | OrdersSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
@@ -209,6 +211,10 @@ export interface Product {
   weightGrams?: number | null;
   category?: (number | null) | Category;
   /**
+   * Optional. Products without a brand still list normally.
+   */
+  brand?: (number | null) | Brand;
+  /**
    * The first image is used as the product thumbnail.
    */
   images?:
@@ -280,6 +286,27 @@ export interface Media {
   filesize?: number | null;
   width?: number | null;
   height?: number | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "brands".
+ */
+export interface Brand {
+  id: number;
+  /**
+   * The manufacturer name as it appears on the product.
+   */
+  name: string;
+  description?: string | null;
+  logo?: (number | null) | Media;
+  /**
+   * Optional link to the manufacturer's own site.
+   */
+  website?: string | null;
+  slug?: string | null;
+  isActive?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -508,6 +535,10 @@ export interface PayloadLockedDocument {
         value: number | Category;
       } | null)
     | ({
+        relationTo: 'brands';
+        value: number | Brand;
+      } | null)
+    | ({
         relationTo: 'orders';
         value: number | Order;
       } | null)
@@ -600,6 +631,7 @@ export interface ProductsSelect<T extends boolean = true> {
   lowStockThreshold?: T;
   weightGrams?: T;
   category?: T;
+  brand?: T;
   images?:
     | T
     | {
@@ -630,6 +662,20 @@ export interface CategoriesSelect<T extends boolean = true> {
   sortOrder?: T;
   isActive?: T;
   slug?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "brands_select".
+ */
+export interface BrandsSelect<T extends boolean = true> {
+  name?: T;
+  description?: T;
+  logo?: T;
+  website?: T;
+  slug?: T;
+  isActive?: T;
   updatedAt?: T;
   createdAt?: T;
 }

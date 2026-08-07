@@ -4,7 +4,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { ProductFilters } from '@/components/product/ProductFilters'
 import { ProductCard } from '@/components/product/ProductCard'
 import { Pagination } from '@/components/ui/Pagination'
-import { findCategories, findProducts, type StorefrontLocale } from '@/lib/payload'
+import { findBrands, findCategories, findProducts, type StorefrontLocale } from '@/lib/payload'
 
 export const revalidate = 3600
 
@@ -56,16 +56,24 @@ export default async function ProductsPage({
   const page = Math.max(1, Number(single(query.page) ?? 1) || 1)
   const search = single(query.q)
   const categorySlug = single(query.category)
+  const brandSlug = single(query.brand)
   const sortKey = single(query.sort) ?? 'newest'
   const inStockOnly = single(query.inStock) === '1'
   const onSaleOnly = single(query.onSale) === '1'
   const minPrice = positiveNumber(single(query.min))
   const maxPrice = positiveNumber(single(query.max))
 
-  const categories = await findCategories(storefrontLocale)
+  const [categories, brands] = await Promise.all([
+    findCategories(storefrontLocale),
+    findBrands(storefrontLocale),
+  ])
+
+  // Slugs are resolved to ids here rather than queried by slug directly: the
+  // lists are already loaded for the sidebar, so this costs no extra query.
   const selectedCategory = categorySlug
     ? categories.find((category) => category.slug === categorySlug)
     : undefined
+  const selectedBrand = brandSlug ? brands.find((brand) => brand.slug === brandSlug) : undefined
 
   const results = await findProducts({
     locale: storefrontLocale,
@@ -73,6 +81,7 @@ export default async function ProductsPage({
     limit: PAGE_SIZE,
     search,
     categoryId: selectedCategory?.id,
+    brandId: selectedBrand?.id,
     // Whitelisted rather than passed through: `sort` reaches the database, and
     // accepting arbitrary values lets a visitor sort by any column, including
     // ones that are not indexed and would scan the table.
@@ -90,7 +99,7 @@ export default async function ProductsPage({
       </h1>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[16rem_1fr]">
-        <ProductFilters categories={categories} />
+        <ProductFilters categories={categories} brands={brands} />
 
         <div>
           {results.docs.length === 0 ? (

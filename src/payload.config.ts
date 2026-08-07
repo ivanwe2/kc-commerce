@@ -8,6 +8,7 @@ import { buildConfig } from 'payload'
 import { getCloudflareContext, type CloudflareContext } from '@opennextjs/cloudflare'
 import type { GetPlatformProxyOptions } from 'wrangler'
 
+import { Brands } from './collections/Brands'
 import { Categories } from './collections/Categories'
 import { Counters } from './collections/Counters'
 import { Media } from './collections/Media'
@@ -134,7 +135,17 @@ export default buildConfig({
     },
   },
 
-  collections: [Products, Categories, Orders, Pages, Media, Users, Counters, PriceHistory],
+  collections: [
+    Products,
+    Categories,
+    Brands,
+    Orders,
+    Pages,
+    Media,
+    Users,
+    Counters,
+    PriceHistory,
+  ],
 
   globals: [Settings],
 

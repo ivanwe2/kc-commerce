@@ -41,9 +41,16 @@ const CATEGORIES = [
   },
 ]
 
+const BRANDS = [
+  { slug: 'sano', name: 'Sano', description: { bg: 'Професионална химия', en: 'Professional chemicals' } },
+  { slug: 'bosch', name: 'Bosch', description: { bg: 'Инструменти и техника', en: 'Tools and equipment' } },
+  { slug: 'maped', name: 'Maped', description: { bg: 'Канцеларски материали', en: 'Stationery' } },
+]
+
 const PRODUCTS = [
   {
     sku: 'KC-CLN-001',
+    brand: 'sano',
     category: 'cleaning',
     basePrice: 4.5,
     stock: 240,
@@ -59,6 +66,7 @@ const PRODUCTS = [
   },
   {
     sku: 'KC-CLN-002',
+    brand: 'sano',
     category: 'cleaning',
     basePrice: 12.9,
     stock: 60,
@@ -73,6 +81,7 @@ const PRODUCTS = [
   },
   {
     sku: 'KC-STA-001',
+    brand: 'maped',
     category: 'stationery',
     basePrice: 8.2,
     stock: 8,
@@ -87,6 +96,7 @@ const PRODUCTS = [
   },
   {
     sku: 'KC-STA-002',
+    brand: 'maped',
     category: 'stationery',
     basePrice: 1.4,
     stock: 0,
@@ -98,6 +108,7 @@ const PRODUCTS = [
   },
   {
     sku: 'KC-TLS-001',
+    brand: 'bosch',
     category: 'tools',
     basePrice: 34.9,
     stock: 25,
@@ -112,6 +123,7 @@ const PRODUCTS = [
   },
   {
     sku: 'KC-HOU-001',
+    brand: 'sano',
     category: 'household',
     basePrice: 6.75,
     stock: 120,
@@ -135,6 +147,35 @@ async function seed() {
       `Refusing to seed: this database already has ${existingOrders.totalDocs} order(s). ` +
         `Seed data belongs in development only.`,
     )
+  }
+
+  const brandIds = new Map<string, number>()
+
+  for (const brand of BRANDS) {
+    const existing = await payload.find({
+      collection: 'brands',
+      where: { slug: { equals: brand.slug } },
+      limit: 1,
+      depth: 0,
+    })
+
+    if (existing.docs[0]) {
+      brandIds.set(brand.slug, existing.docs[0].id)
+      continue
+    }
+
+    const created = await payload.create({
+      collection: 'brands',
+      locale: 'bg',
+      data: { name: brand.name, slug: brand.slug, description: brand.description.bg, isActive: true },
+    })
+    await payload.update({
+      collection: 'brands',
+      id: created.id,
+      locale: 'en',
+      data: { description: brand.description.en },
+    })
+    brandIds.set(brand.slug, created.id)
   }
 
   const categoryIds = new Map<string, number>()
@@ -200,6 +241,7 @@ async function seed() {
         isActive: true,
         isFeatured: product.featured,
         category: categoryIds.get(product.category),
+        brand: brandIds.get(product.brand),
         pricingTiers: product.tiers,
       },
     })
@@ -239,7 +281,7 @@ async function seed() {
 
   // eslint-disable-next-line no-console -- this is a CLI script; output is the point.
   console.log(
-    `Seeded ${CATEGORIES.length} categories and ${PRODUCTS.length} products, plus site settings.`,
+    `Seeded ${BRANDS.length} brands, ${CATEGORIES.length} categories and ${PRODUCTS.length} products, plus site settings.`,
   )
 }
 

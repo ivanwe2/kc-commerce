@@ -59,6 +59,17 @@ export const revalidatePage: CollectionAfterChangeHook = ({ doc, req }) => {
   return doc
 }
 
+export const revalidateBrand: CollectionAfterChangeHook = ({ doc, req }) => {
+  try {
+    revalidateTag('brands', EXPIRE_NOW)
+    // Product cards show the brand name, so they go stale too.
+    revalidateTag('products', EXPIRE_NOW)
+  } catch (error) {
+    req.payload.logger.warn({ err: error }, 'revalidateTag failed')
+  }
+  return doc
+}
+
 /** Settings appear in the header and footer of every page, so flush everything. */
 export const revalidateSettings: GlobalAfterChangeHook = ({ doc, req }) => {
   try {
