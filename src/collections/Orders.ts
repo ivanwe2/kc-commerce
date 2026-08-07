@@ -281,6 +281,18 @@ export const Orders: CollectionConfig = {
           admin: { readOnly: true, description: 'EUR. Calculated server-side.' },
         },
         {
+          name: 'discount',
+          type: 'number',
+          defaultValue: 0,
+          min: 0,
+          admin: { readOnly: true, description: 'EUR. Coupon discount applied.' },
+        },
+        {
+          name: 'couponCode',
+          type: 'text',
+          admin: { readOnly: true },
+        },
+        {
           name: 'total',
           type: 'number',
           required: true,

@@ -32,6 +32,7 @@ export function CheckoutForm({ rates }: { rates: Rates }) {
   const clearCart = useCartStore((state) => state.clearCart)
 
   const [method, setMethod] = useState<ShippingMethod>('econt_office')
+  const [couponCode, setCouponCode] = useState('')
   const [errors, setErrors] = useState<CheckoutFieldErrors>({})
   const [isPending, startTransition] = useTransition()
 
@@ -82,6 +83,7 @@ export function CheckoutForm({ rates }: { rates: Rates }) {
       marketingConsent: formData.get('marketingConsent') === 'on',
       // Only ids and quantities cross the wire. There is deliberately no field
       // in which a price could be submitted.
+      couponCode: couponCode.trim() || undefined,
       items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
       locale,
     }
@@ -305,6 +307,26 @@ export function CheckoutForm({ rates }: { rates: Rates }) {
             </li>
           ))}
         </ul>
+
+        {/*
+          The discount is applied and shown by the SERVER after the order is
+          placed, not previewed here. Previewing would mean validating the code
+          client-side, and a client-side "valid" is worth nothing — the amount
+          the customer pays is decided in the server action either way.
+        */}
+        <div className="border-t border-border-default pt-3">
+          <label htmlFor="coupon" className="mb-1.5 block text-sm font-medium text-body">
+            {t('couponCode')}
+          </label>
+          <input
+            id="coupon"
+            name="couponCode"
+            value={couponCode}
+            onChange={(event) => setCouponCode(event.target.value.toUpperCase())}
+            autoComplete="off"
+            className="w-full rounded-[--radius-control] border border-border-default bg-background px-3 py-2 text-base uppercase focus:border-primary focus:outline-none"
+          />
+        </div>
 
         <dl className="space-y-2 border-t border-border-default pt-3 text-sm">
           <div className="flex justify-between">

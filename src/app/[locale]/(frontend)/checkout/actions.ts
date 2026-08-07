@@ -4,6 +4,7 @@ import config from '@payload-config'
 import { getPayload } from 'payload'
 
 import { formatOrderNumber, nextCounterValue, orderCounterKey } from '@/lib/counters'
+import { recordCouponUse, validateCoupon } from '@/lib/coupons'
 import { effectiveUnitPrice, isSaleActive, referencePrice } from '@/lib/discount'
 import { sendOrderConfirmation } from '@/lib/email'
 import { multiplyMoney, roundMoney, sumMoney } from '@/lib/money'
@@ -124,12 +125,39 @@ export async function createOrder(input: unknown): Promise<CheckoutResult> {
   // --- 4. Totals, computed here ------------------------------------------
   const settings = await payload.findGlobal({ slug: 'settings', depth: 0 })
   const subtotal = sumMoney(lines.map((line) => line.totalPrice))
-  const shippingCost = calculateShippingCost({
-    method: data.shippingMethod as ShippingMethod,
-    subtotal,
-    settings,
-  })
-  const total = roundMoney(subtotal + shippingCost)
+
+  /**
+   * Coupon re-resolved from the database, never trusted from the request.
+   *
+   * An invalid code is NOT an error: it is dropped and the order proceeds at
+   * full price. Failing the whole checkout because a promotion expired an hour
+   * ago loses the sale over a few euros of discount.
+   */
+  let discount = 0
+  let freeShipping = false
+  let appliedCouponCode: string | undefined
+  let appliedCouponId: number | undefined
+
+  if (data.couponCode) {
+    const result = await validateCoupon(payload, data.couponCode, subtotal)
+    if (result.valid) {
+      discount = result.discount
+      freeShipping = result.freeShipping
+      appliedCouponCode = result.coupon.code
+      appliedCouponId = result.coupon.id
+    }
+  }
+
+  const shippingCost = freeShipping
+    ? 0
+    : calculateShippingCost({
+        method: data.shippingMethod as ShippingMethod,
+        subtotal,
+        settings,
+      })
+
+  // Clamped at zero: a courier cannot collect a negative amount on delivery.
+  const total = Math.max(0, roundMoney(subtotal - discount + shippingCost))
 
   // --- 5. Reserve stock ----------------------------------------------------
   // Before the order is written: reserving stock for an order that then fails
@@ -202,11 +230,15 @@ export async function createOrder(input: unknown): Promise<CheckoutResult> {
         })),
         subtotal,
         shippingCost,
+        discount,
+        couponCode: appliedCouponCode,
         total,
         courierService: courierFor(data.shippingMethod as ShippingMethod),
         locale: data.locale,
       },
     })
+
+    if (appliedCouponId) await recordCouponUse(payload, appliedCouponId)
 
     // --- 7. Email, best effort --------------------------------------------
     // A failed email must never fail a placed order. The order exists, the
@@ -220,6 +252,8 @@ export async function createOrder(input: unknown): Promise<CheckoutResult> {
         lines,
         subtotal,
         shippingCost,
+        discount,
+        couponCode: appliedCouponCode,
         total,
       })
     } catch (error) {

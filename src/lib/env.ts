@@ -20,6 +20,7 @@ const envSchema = z.object({
   RESEND_FROM_EMAIL: z.email().optional(),
   ORDER_NOTIFICATION_EMAIL: z.email().optional(),
   CRON_SECRET: z.string().optional(),
+  NEXT_PUBLIC_PLAUSIBLE_DOMAIN: z.string().optional(),
   PAYLOAD_LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
 })
 
@@ -49,6 +50,7 @@ export function getEnv(): Env {
     RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
     ORDER_NOTIFICATION_EMAIL: process.env.ORDER_NOTIFICATION_EMAIL,
     CRON_SECRET: process.env.CRON_SECRET,
+    NEXT_PUBLIC_PLAUSIBLE_DOMAIN: process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN,
     PAYLOAD_LOG_LEVEL: process.env.PAYLOAD_LOG_LEVEL,
   })
 

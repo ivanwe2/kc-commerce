@@ -5,6 +5,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { notFound } from 'next/navigation'
 import React from 'react'
 
+import { Analytics } from '@/components/Analytics'
 import { CartProvider } from '@/components/cart/CartProvider'
 import { CookieConsent } from '@/components/legal/CookieConsent'
 import { Footer } from '@/components/layout/Footer'
@@ -105,6 +106,7 @@ export default async function LocaleLayout({
           </div>
           <Footer locale={locale as StorefrontLocale} />
           <CookieConsent />
+          <Analytics />
         </NextIntlClientProvider>
       </body>
     </html>

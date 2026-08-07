@@ -32,6 +32,8 @@ type OrderEmailData = {
   lines: OrderLine[]
   subtotal: number
   shippingCost: number
+  discount?: number
+  couponCode?: string
   total: number
 }
 
@@ -94,6 +96,7 @@ const COPY = {
     price: 'Цена',
     subtotal: 'Междинна сума',
     shipping: 'Доставка',
+    discount: 'Отстъпка',
     total: 'Общо за плащане',
     payment: 'Начин на плащане: наложен платеж (плащате на куриера при получаване).',
     withdrawal:
@@ -114,6 +117,7 @@ const COPY = {
     price: 'Price',
     subtotal: 'Subtotal',
     shipping: 'Shipping',
+    discount: 'Discount',
     total: 'Total due',
     payment: 'Payment method: cash on delivery (you pay the courier on receipt).',
     withdrawal:
@@ -177,6 +181,11 @@ export async function sendOrderConfirmation(data: OrderEmailData): Promise<void>
     ${lineItemsTable(data.lines, data.locale)}
     <table style="width:100%;font-size:14px;">
       <tr><td style="padding:4px 0;">${t.subtotal}</td><td style="padding:4px 0;text-align:right;">${formatPrice(data.subtotal, data.locale)}</td></tr>
+      ${
+        data.discount && data.discount > 0
+          ? `<tr><td style="padding:4px 0;">${t.discount}${data.couponCode ? ` (${escapeHtml(data.couponCode)})` : ''}</td><td style="padding:4px 0;text-align:right;">−${formatPrice(data.discount, data.locale)}</td></tr>`
+          : ''
+      }
       <tr><td style="padding:4px 0;">${t.shipping}</td><td style="padding:4px 0;text-align:right;">${formatPrice(data.shippingCost, data.locale)}</td></tr>
       <tr><td style="padding:8px 0;font-weight:700;color:#0f172a;">${t.total}</td><td style="padding:8px 0;text-align:right;font-weight:700;color:#0f172a;">${formatPrice(data.total, data.locale)}</td></tr>
     </table>

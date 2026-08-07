@@ -111,7 +111,12 @@
     "marketingConsent": "I would like to receive offers by email (optional)",
     "placeOrder": "Place order (cash on delivery)",
     "placingOrder": "Placing your order...",
-    "obligationNotice": "By clicking this button you enter into an obligation to pay."
+    "obligationNotice": "By clicking this button you enter into an obligation to pay.",
+    "couponCode": "Discount code",
+    "applyCoupon": "Apply",
+    "discount": "Discount",
+    "couponInvalid": "Invalid or expired code",
+    "couponApplied": "Code applied"
   },
   "confirmation": {
     "title": "Thank you for your order!",
