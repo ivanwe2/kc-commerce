@@ -64,6 +64,7 @@ export const checkoutSchema = z
     acceptedWithdrawal: z.literal(true, { message: 'fieldRequired' }),
     marketingConsent: z.boolean().default(false),
 
+    couponCode: z.string().trim().max(40).optional(),
     items: z.array(cartItemInputSchema).min(1).max(100),
     locale: z.enum(['bg', 'en']).default('bg'),
   })

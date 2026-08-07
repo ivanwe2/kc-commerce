@@ -76,7 +76,10 @@ export interface Config {
     media: Media;
     users: User;
     banners: Banner;
+    reviews: Review;
     customers: Customer;
+    coupons: Coupon;
+    'stock-alerts': StockAlert;
     counters: Counter;
     'price-history': PriceHistory;
     'payload-kv': PayloadKv;
@@ -94,7 +97,10 @@ export interface Config {
     media: MediaSelect<false> | MediaSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     banners: BannersSelect<false> | BannersSelect<true>;
+    reviews: ReviewsSelect<false> | ReviewsSelect<true>;
     customers: CustomersSelect<false> | CustomersSelect<true>;
+    coupons: CouponsSelect<false> | CouponsSelect<true>;
+    'stock-alerts': StockAlertsSelect<false> | StockAlertsSelect<true>;
     counters: CountersSelect<false> | CountersSelect<true>;
     'price-history': PriceHistorySelect<false> | PriceHistorySelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
@@ -409,6 +415,11 @@ export interface Order {
    */
   shippingCost: number;
   /**
+   * EUR. Coupon discount applied.
+   */
+  discount?: number | null;
+  couponCode?: string | null;
+  /**
    * EUR. Amount due on delivery.
    */
   total: number;
@@ -573,6 +584,76 @@ export interface Banner {
   createdAt: string;
 }
 /**
+ * Reviews are hidden until approved.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "reviews".
+ */
+export interface Review {
+  id: number;
+  product: number | Product;
+  rating: number;
+  authorName: string;
+  title?: string | null;
+  body?: string | null;
+  /**
+   * The verified purchase this review is attached to.
+   */
+  orderNumber?: string | null;
+  isApproved?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "coupons".
+ */
+export interface Coupon {
+  id: number;
+  /**
+   * Case-insensitive. Stored and compared in upper case.
+   */
+  code: string;
+  discountType: 'percent' | 'fixed' | 'free_shipping';
+  /**
+   * Percent (1-100) or EUR amount. Ignored for free shipping.
+   */
+  discountValue?: number | null;
+  /**
+   * Optional. Minimum order subtotal in EUR.
+   */
+  minimumSubtotal?: number | null;
+  /**
+   * Optional. Total redemptions allowed across all customers.
+   */
+  maxUses?: number | null;
+  timesUsed?: number | null;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  isActive?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "stock-alerts".
+ */
+export interface StockAlert {
+  id: number;
+  product: number | Product;
+  email: string;
+  /**
+   * Language to send the notification in.
+   */
+  locale?: string | null;
+  /**
+   * Set once the restock email has been sent. Empty means still waiting.
+   */
+  notifiedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * Internal sequence counters, incremented atomically at checkout. Read-only by design.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -662,8 +743,20 @@ export interface PayloadLockedDocument {
         value: number | Banner;
       } | null)
     | ({
+        relationTo: 'reviews';
+        value: number | Review;
+      } | null)
+    | ({
         relationTo: 'customers';
         value: number | Customer;
+      } | null)
+    | ({
+        relationTo: 'coupons';
+        value: number | Coupon;
+      } | null)
+    | ({
+        relationTo: 'stock-alerts';
+        value: number | StockAlert;
       } | null)
     | ({
         relationTo: 'counters';
@@ -846,6 +939,8 @@ export interface OrdersSelect<T extends boolean = true> {
       };
   subtotal?: T;
   shippingCost?: T;
+  discount?: T;
+  couponCode?: T;
   total?: T;
   courierService?: T;
   trackingNumber?: T;
@@ -940,6 +1035,21 @@ export interface BannersSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "reviews_select".
+ */
+export interface ReviewsSelect<T extends boolean = true> {
+  product?: T;
+  rating?: T;
+  authorName?: T;
+  title?: T;
+  body?: T;
+  orderNumber?: T;
+  isApproved?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "customers_select".
  */
 export interface CustomersSelect<T extends boolean = true> {
@@ -972,6 +1082,35 @@ export interface CustomersSelect<T extends boolean = true> {
         createdAt?: T;
         expiresAt?: T;
       };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "coupons_select".
+ */
+export interface CouponsSelect<T extends boolean = true> {
+  code?: T;
+  discountType?: T;
+  discountValue?: T;
+  minimumSubtotal?: T;
+  maxUses?: T;
+  timesUsed?: T;
+  startsAt?: T;
+  endsAt?: T;
+  isActive?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "stock-alerts_select".
+ */
+export interface StockAlertsSelect<T extends boolean = true> {
+  product?: T;
+  email?: T;
+  locale?: T;
+  notifiedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

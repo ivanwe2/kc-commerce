@@ -30,6 +30,7 @@ export const CACHE_TAGS = {
   categories: 'categories',
   brands: 'brands',
   banners: 'banners',
+  reviews: 'reviews',
   pages: 'pages',
   page: (slug: string) => `page:${slug}`,
   settings: 'settings',

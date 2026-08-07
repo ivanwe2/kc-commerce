@@ -11,12 +11,15 @@ import type { GetPlatformProxyOptions } from 'wrangler'
 import { Banners } from './collections/Banners'
 import { Brands } from './collections/Brands'
 import { Categories } from './collections/Categories'
+import { Coupons } from './collections/Coupons'
 import { Counters } from './collections/Counters'
 import { Customers } from './collections/Customers'
 import { Media } from './collections/Media'
 import { Orders } from './collections/Orders'
 import { Pages } from './collections/Pages'
 import { PriceHistory } from './collections/PriceHistory'
+import { Reviews } from './collections/Reviews'
+import { StockAlerts } from './collections/StockAlerts'
 import { Products } from './collections/Products'
 import { Users } from './collections/Users'
 import { Settings } from './globals/Settings'
@@ -146,7 +149,10 @@ export default buildConfig({
     Media,
     Users,
     Banners,
+    Reviews,
     Customers,
+    Coupons,
+    StockAlerts,
     Counters,
     PriceHistory,
   ],

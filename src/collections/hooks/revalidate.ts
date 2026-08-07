@@ -79,6 +79,17 @@ export const revalidateBanner: CollectionAfterChangeHook = ({ doc, req }) => {
   return doc
 }
 
+/** Approving a review changes the product page it appears on. */
+export const revalidateProductFromReview: CollectionAfterChangeHook = ({ doc, req }) => {
+  try {
+    revalidateTag('products', EXPIRE_NOW)
+    revalidateTag('reviews', EXPIRE_NOW)
+  } catch (error) {
+    req.payload.logger.warn({ err: error }, 'revalidateTag failed')
+  }
+  return doc
+}
+
 /** Settings appear in the header and footer of every page, so flush everything. */
 export const revalidateSettings: GlobalAfterChangeHook = ({ doc, req }) => {
   try {
