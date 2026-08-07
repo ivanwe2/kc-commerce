@@ -224,6 +224,18 @@ export const Products: CollectionConfig = {
       ],
     },
     {
+      name: 'crossSell',
+      type: 'relationship',
+      relationTo: 'products',
+      hasMany: true,
+      maxDepth: 1,
+      admin: {
+        description:
+          'Manually curated "frequently bought together" products. Overrides the automatic same-category suggestions when set.',
+      },
+      filterOptions: ({ id }) => (id ? { id: { not_equals: id } } : true),
+    },
+    {
       name: 'images',
       type: 'array',
       maxRows: 10,

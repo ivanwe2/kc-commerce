@@ -54,7 +54,9 @@
     "bulkUpTo": "Up to -{percent}% bulk",
     "saleEndsIn": "Offer ends {date}",
     "saleSection": "On sale",
-    "viewAllSales": "View all offers"
+    "viewAllSales": "View all offers",
+    "recentlyViewed": "Recently viewed",
+    "frequentlyBought": "Frequently bought together"
   },
   "units": {
     "piece": "pcs",

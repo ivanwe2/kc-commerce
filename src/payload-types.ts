@@ -74,6 +74,7 @@ export interface Config {
     pages: Page;
     media: Media;
     users: User;
+    banners: Banner;
     counters: Counter;
     'price-history': PriceHistory;
     'payload-kv': PayloadKv;
@@ -90,6 +91,7 @@ export interface Config {
     pages: PagesSelect<false> | PagesSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
+    banners: BannersSelect<false> | BannersSelect<true>;
     counters: CountersSelect<false> | CountersSelect<true>;
     'price-history': PriceHistorySelect<false> | PriceHistorySelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
@@ -214,6 +216,10 @@ export interface Product {
    * Optional. Products without a brand still list normally.
    */
   brand?: (number | null) | Brand;
+  /**
+   * Manually curated "frequently bought together" products. Overrides the automatic same-category suggestions when set.
+   */
+  crossSell?: (number | Product)[] | null;
   /**
    * The first image is used as the product thumbnail.
    */
@@ -470,6 +476,36 @@ export interface User {
   collection: 'users';
 }
 /**
+ * Promotional banners. Set dates to schedule; leave them empty to run immediately.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "banners".
+ */
+export interface Banner {
+  id: number;
+  title: string;
+  subtitle?: string | null;
+  /**
+   * Wide image. Renders as a coloured panel when empty.
+   */
+  image?: (number | null) | Media;
+  /**
+   * Where the banner leads, e.g. /products?onSale=1
+   */
+  linkUrl?: string | null;
+  /**
+   * Button text. The whole banner is clickable if empty.
+   */
+  linkLabel?: string | null;
+  placement: 'homepage_hero' | 'homepage_mid' | 'listing_top';
+  startsAt?: string | null;
+  endsAt?: string | null;
+  sortOrder?: number | null;
+  isActive?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * Internal sequence counters, incremented atomically at checkout. Read-only by design.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -555,6 +591,10 @@ export interface PayloadLockedDocument {
         value: number | User;
       } | null)
     | ({
+        relationTo: 'banners';
+        value: number | Banner;
+      } | null)
+    | ({
         relationTo: 'counters';
         value: number | Counter;
       } | null)
@@ -632,6 +672,7 @@ export interface ProductsSelect<T extends boolean = true> {
   weightGrams?: T;
   category?: T;
   brand?: T;
+  crossSell?: T;
   images?:
     | T
     | {
@@ -796,6 +837,24 @@ export interface UsersSelect<T extends boolean = true> {
         createdAt?: T;
         expiresAt?: T;
       };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "banners_select".
+ */
+export interface BannersSelect<T extends boolean = true> {
+  title?: T;
+  subtitle?: T;
+  image?: T;
+  linkUrl?: T;
+  linkLabel?: T;
+  placement?: T;
+  startsAt?: T;
+  endsAt?: T;
+  sortOrder?: T;
+  isActive?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

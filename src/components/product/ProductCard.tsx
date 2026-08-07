@@ -2,6 +2,7 @@ import { getTranslations } from 'next-intl/server'
 
 import { MediaImage } from '@/components/MediaImage'
 import { PriceDisplay } from '@/components/product/PriceDisplay'
+import { QuickAdd } from '@/components/product/QuickAdd'
 import { Badge } from '@/components/ui/Badge'
 import { Link } from '@/i18n/routing'
 import { displayPrice, isSaleActive } from '@/lib/discount'
@@ -108,6 +109,23 @@ export async function ProductCard({
             locale={locale}
           />
         </div>
+
+        <QuickAdd
+          className="mt-3"
+          disabled={isOutOfStock}
+          item={{
+            productId: product.id,
+            slug: product.slug ?? '',
+            title: product.title,
+            image:
+              firstImage && typeof firstImage === 'object' ? (firstImage.url ?? null) : null,
+            basePrice: unitPrice,
+            maxStock: product.stock ?? 0,
+            minOrderQuantity: product.minOrderQuantity ?? 1,
+            unit: product.unit ?? 'piece',
+            pricingTiers: tiers,
+          }}
+        />
       </div>
     </article>
   )

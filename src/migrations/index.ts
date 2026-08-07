@@ -2,6 +2,7 @@ import * as migration_20260806_211140_initial from './20260806_211140_initial';
 import * as migration_20260806_212710_data_model from './20260806_212710_data_model';
 import * as migration_20260807_190436_discounts from './20260807_190436_discounts';
 import * as migration_20260807_191424_brands from './20260807_191424_brands';
+import * as migration_20260807_192440_merchandising from './20260807_192440_merchandising';
 import * as migration_20260807_200000_search_index from './20260807_200000_search_index';
 
 export const migrations = [
@@ -23,11 +24,16 @@ export const migrations = [
   {
     up: migration_20260807_191424_brands.up,
     down: migration_20260807_191424_brands.down,
-    name: '20260807_191424_brands'
+    name: '20260807_191424_brands',
+  },
+  {
+    up: migration_20260807_192440_merchandising.up,
+    down: migration_20260807_192440_merchandising.down,
+    name: '20260807_192440_merchandising',
   },
   {
     up: migration_20260807_200000_search_index.up,
     down: migration_20260807_200000_search_index.down,
-    name: '20260807_200000_search_index',
+    name: '20260807_200000_search_index'
   },
 ];

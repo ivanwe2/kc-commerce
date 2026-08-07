@@ -1,6 +1,7 @@
 import { PackageCheck, RotateCcw, ShieldCheck, Truck } from 'lucide-react'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 
+import { BannerStrip } from '@/components/BannerStrip'
 import { MediaImage } from '@/components/MediaImage'
 import { ProductCard } from '@/components/product/ProductCard'
 import { buttonVariants } from '@/components/ui/Button'
@@ -61,6 +62,8 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           </Link>
         </div>
       </section>
+
+      <BannerStrip placement="homepage_hero" locale={storefrontLocale} />
 
       {/*
         Sale section sits above featured: a live promotion is the most
@@ -144,6 +147,8 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           </div>
         </section>
       )}
+
+      <BannerStrip placement="homepage_mid" locale={storefrontLocale} />
 
       <section className="container-page py-12">
         <dl className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
