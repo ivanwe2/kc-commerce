@@ -13,6 +13,12 @@ PAYLOAD_SECRET=
 # with a 403 that looks like a permissions bug.
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
+# Optional. Extra origins to trust for CORS, CSRF and Server Actions — needed to
+# browse from another device (a phone on the LAN or over a VPN). Comma-separated,
+# including scheme and port. Without it the pages render but checkout and admin
+# writes are rejected as cross-origin.
+# ADDITIONAL_ORIGINS=http://192.168.0.29:3000,http://100.89.47.125:3000
+
 # Optional until Phase 5 (transactional email)
 RESEND_API_KEY=
 RESEND_FROM_EMAIL=orders@kctrading.bg

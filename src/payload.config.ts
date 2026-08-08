@@ -130,7 +130,29 @@ if (!isWorkerRuntime) {
 }
 
 const siteURL: string | undefined = process.env.NEXT_PUBLIC_SITE_URL
-const allowedOrigins: string[] = siteURL ? [siteURL] : []
+
+/**
+ * Origins trusted for CORS and CSRF.
+ *
+ * The canonical site URL, plus anything listed in ADDITIONAL_ORIGINS
+ * (comma-separated). The extra list exists because a single origin is wrong
+ * whenever the app is reachable by more than one address — testing on a phone
+ * over the LAN or a VPN, for instance, where the same server answers on
+ * localhost, a 192.168.x.x address and a VPN address at once.
+ *
+ * Without the origin trusted, Payload rejects cookie-authenticated writes and
+ * Next rejects Server Actions, so the site LOOKS fine until someone tries to
+ * check out — which is the worst way to discover it.
+ *
+ * This is additive and opt-in: production sets only NEXT_PUBLIC_SITE_URL and
+ * behaves exactly as before.
+ */
+const additionalOrigins = (process.env.ADDITIONAL_ORIGINS ?? '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean)
+
+const allowedOrigins: string[] = [...(siteURL ? [siteURL] : []), ...additionalOrigins]
 
 export default buildConfig({
   admin: {
