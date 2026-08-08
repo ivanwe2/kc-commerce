@@ -6,6 +6,7 @@ import * as migration_20260807_192440_merchandising from './20260807_192440_merc
 import * as migration_20260807_195623_accounts from './20260807_195623_accounts';
 import * as migration_20260807_200000_search_index from './20260807_200000_search_index';
 import * as migration_20260807_200329_growth from './20260807_200329_growth';
+import * as migration_20260808_110135_stock_restored from './20260808_110135_stock_restored';
 
 export const migrations = [
   {
@@ -46,6 +47,11 @@ export const migrations = [
   {
     up: migration_20260807_200329_growth.up,
     down: migration_20260807_200329_growth.down,
-    name: '20260807_200329_growth'
+    name: '20260807_200329_growth',
+  },
+  {
+    up: migration_20260808_110135_stock_restored.up,
+    down: migration_20260808_110135_stock_restored.down,
+    name: '20260808_110135_stock_restored'
   },
 ];
