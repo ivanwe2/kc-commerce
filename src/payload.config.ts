@@ -135,6 +135,9 @@ const allowedOrigins: string[] = siteURL ? [siteURL] : []
 export default buildConfig({
   admin: {
     user: Users.slug,
+    components: {
+      beforeDashboard: ['@/components/admin/Dashboard#Dashboard'],
+    },
     importMap: { baseDir: path.resolve(dirname) },
     meta: {
       titleSuffix: '— KC Trading',
