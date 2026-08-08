@@ -67,9 +67,6 @@ jobs:
         run: pnpm build
 
       - name: Smoke-test the built Worker
-        env:
-          PAYLOAD_SECRET: ci-build-only-secret-not-used-for-signing
-          NEXT_PUBLIC_SITE_URL: http://localhost:8787
         # Building the Worker is not the same as it working. A wrapper around
         # OpenNext's entry once built cleanly and then failed on every request
         # with "handler3 is not a function" — CI was green while the artifact
@@ -85,6 +82,17 @@ jobs:
           # "handler3 is not a function". That contamination cost a wrongly
           # diagnosed revert; it is not going to cost a broken deploy.
           rm -rf .next .open-next
+
+          # The Worker reads secrets from .dev.vars, not from the shell. Setting
+          # PAYLOAD_SECRET as a step env var does NOT reach it — the Worker boots
+          # and every request 500s with "missing secret key". The smoke test
+          # caught exactly that, which is the point of having it.
+          cat > .dev.vars <<'VARS'
+          PAYLOAD_SECRET=ci-smoke-test-secret-not-used-for-signing-anything
+          NEXT_PUBLIC_SITE_URL=http://localhost:8787
+          VARS
+          sed -i 's/^[[:space:]]*//' .dev.vars
+
           pnpm exec opennextjs-cloudflare build
           pnpm exec wrangler dev --port 8787 --local &
           WORKER_PID=$!
@@ -102,6 +110,7 @@ jobs:
           if ! grep -q '"database":"ok"' /tmp/health.json 2>/dev/null; then
             echo "::error::The built Worker did not serve a healthy response."
             kill $WORKER_PID 2>/dev/null || true
+            rm -f .dev.vars
             exit 1
           fi
 
@@ -111,6 +120,7 @@ jobs:
           echo "GET / -> $STATUS"
 
           kill $WORKER_PID 2>/dev/null || true
+          rm -f .dev.vars
 
           if [ "$STATUS" != "200" ]; then
             echo "::error::The built Worker did not render the storefront."
