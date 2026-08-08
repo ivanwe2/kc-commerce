@@ -27,8 +27,84 @@ import { getCloudflareContext } from '@opennextjs/cloudflare'
 
 export type StockRequest = { productId: number; quantity: number }
 
+export type MovementReason = 'sale' | 'cancellation' | 'return'
+
+/**
+ * Writes ledger rows for movements made here.
+ *
+ * These paths use raw D1 rather than Payload, so no collection hook fires and
+ * the ledger would otherwise miss exactly the movements that matter most —
+ * every sale. Written with the same binding, in the same request, immediately
+ * after the balance moves.
+ *
+ * `balance_after` is recorded from the UPDATE's RETURNING value, so the ledger
+ * reflects what the balance actually became rather than what we assumed.
+ */
+async function recordMovements(
+  db: D1Database,
+  rows: { productId: number; delta: number; balanceAfter: number | null }[],
+  reason: MovementReason,
+  reference?: string,
+): Promise<number[]> {
+  if (rows.length === 0) return []
+
+  const now = `strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`
+  const ids: number[] = []
+
+  try {
+    for (const row of rows) {
+      const inserted = await db
+        .prepare(
+          `INSERT INTO stock_movements
+             (product_id, delta, reason, balance_after, reference, recorded_by, updated_at, created_at)
+           VALUES (?1, ?2, ?3, ?4, ?5, 'system', ${now}, ${now})
+           RETURNING id`,
+        )
+        .bind(row.productId, row.delta, reason, row.balanceAfter, reference ?? null)
+        .first<{ id: number }>()
+
+      if (inserted?.id) ids.push(inserted.id)
+    }
+  } catch {
+    // A missing ledger row is a reporting gap, not a correctness failure — the
+    // balance already moved correctly. Never fail a customer's order over it.
+  }
+
+  return ids
+}
+
+/**
+ * Attaches an order number to movements written before it existed.
+ *
+ * Stock is reserved BEFORE the order number is claimed, so that a checkout that
+ * fails does not burn a sequence number and leave a visible gap in the order
+ * book. The consequence is that sale movements are written without a reference,
+ * and a ledger entry reading "-3, sale" with no order attached answers "how much
+ * changed" but not "because of what" — which is most of the point of keeping it.
+ *
+ * Back-filling by id avoids the race a "most recent unreferenced sale" query
+ * would have under concurrent checkouts.
+ */
+export async function attachReferenceToMovements(
+  movementIds: number[],
+  reference: string,
+): Promise<void> {
+  if (movementIds.length === 0) return
+
+  try {
+    const { env } = await getCloudflareContext({ async: true })
+    await env.D1.batch(
+      movementIds.map((id) =>
+        env.D1.prepare(`UPDATE stock_movements SET reference = ?1 WHERE id = ?2`).bind(reference, id),
+      ),
+    )
+  } catch {
+    // Reporting detail only; never worth failing a placed order.
+  }
+}
+
 export type ReservationResult =
-  | { ok: true }
+  | { ok: true; movementIds: number[] }
   | { ok: false; failedProductId: number; available: number }
 
 /**
@@ -37,22 +113,27 @@ export type ReservationResult =
  * On failure, every successful reservation made during this call is released
  * before returning.
  */
-export async function reserveStock(items: StockRequest[]): Promise<ReservationResult> {
+export async function reserveStock(
+  items: StockRequest[],
+  options: { reason?: MovementReason; reference?: string } = {},
+): Promise<ReservationResult> {
   const { env } = await getCloudflareContext({ async: true })
 
   const reserved: StockRequest[] = []
+  const ledger: { productId: number; delta: number; balanceAfter: number | null }[] = []
 
   for (const item of items) {
-    const result = await env.D1.prepare(
+    const row = await env.D1.prepare(
       `UPDATE products
          SET stock = stock - ?1
        WHERE id = ?2
-         AND stock >= ?1`,
+         AND stock >= ?1
+       RETURNING stock`,
     )
       .bind(item.quantity, item.productId)
-      .run()
+      .first<{ stock: number }>()
 
-    const changed = result.meta?.changes ?? 0
+    const changed = row ? 1 : 0
 
     if (changed === 0) {
       // Insufficient stock. Undo everything reserved so far, then report which
@@ -72,9 +153,17 @@ export async function reserveStock(items: StockRequest[]): Promise<ReservationRe
     }
 
     reserved.push(item)
+    ledger.push({ productId: item.productId, delta: -item.quantity, balanceAfter: row?.stock ?? null })
   }
 
-  return { ok: true }
+  const movementIds = await recordMovements(
+    env.D1,
+    ledger,
+    options.reason ?? 'sale',
+    options.reference,
+  )
+
+  return { ok: true, movementIds }
 }
 
 /**
@@ -87,20 +176,28 @@ export async function reserveStock(items: StockRequest[]): Promise<ReservationRe
  * Under-counted stock is visible to an admin and fixable; a 500 at the moment
  * of purchase is not.
  */
-export async function releaseStock(items: StockRequest[]): Promise<void> {
+export async function releaseStock(
+  items: StockRequest[],
+  options: { reason?: MovementReason; reference?: string } = {},
+): Promise<void> {
   if (items.length === 0) return
 
   try {
     const { env } = await getCloudflareContext({ async: true })
 
-    await env.D1.batch(
-      items.map((item) =>
-        env.D1.prepare(`UPDATE products SET stock = stock + ?1 WHERE id = ?2`).bind(
-          item.quantity,
-          item.productId,
-        ),
-      ),
-    )
+    const ledger: { productId: number; delta: number; balanceAfter: number | null }[] = []
+
+    for (const item of items) {
+      const row = await env.D1.prepare(
+        `UPDATE products SET stock = stock + ?1 WHERE id = ?2 RETURNING stock`,
+      )
+        .bind(item.quantity, item.productId)
+        .first<{ stock: number }>()
+
+      ledger.push({ productId: item.productId, delta: item.quantity, balanceAfter: row?.stock ?? null })
+    }
+
+    await recordMovements(env.D1, ledger, options.reason ?? 'cancellation', options.reference)
   } catch {
     // Intentionally swallowed — see above.
   }

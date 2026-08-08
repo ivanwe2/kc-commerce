@@ -5,6 +5,8 @@ import { roundMoney } from '@/lib/money'
 import { validatePricingTiers, type PricingTier } from '@/lib/pricing'
 import { slugify } from '@/lib/slugify'
 import { alertOnLowStock } from './hooks/lowStock'
+import { auditManualStockEdit } from './hooks/auditStockEdit'
+import { recordOpeningBalance } from './hooks/openingBalance'
 import { recordPriceHistory } from './hooks/priceHistory'
 import { revalidateProduct, revalidateProductDelete } from './hooks/revalidate'
 
@@ -68,6 +70,23 @@ export const Products: CollectionConfig = {
           min: 0,
           admin: {
             description: 'Single-unit price in EUR, e.g. 12.50',
+          },
+        },
+        {
+          name: 'costPrice',
+          type: 'number',
+          min: 0,
+          admin: {
+            description:
+              'What you pay per unit. Never shown to customers — used for margin reporting only.',
+          },
+          // Cost price is commercially sensitive: an editor managing the
+          // catalogue has no need for supplier pricing, and it must never reach
+          // the storefront.
+          access: {
+            read: ({ req: { user } }) => user?.collection === 'users',
+            create: ({ req: { user } }) => (user as { role?: string } | undefined)?.role === 'admin',
+            update: ({ req: { user } }) => (user as { role?: string } | undefined)?.role === 'admin',
           },
         },
         {
@@ -181,6 +200,10 @@ export const Products: CollectionConfig = {
           defaultValue: 0,
           min: 0,
           index: true,
+          admin: {
+            description:
+              'Running balance maintained from the stock ledger. To receive goods or write off damage, add a Stock Movement — editing this directly is recorded as a correction.',
+          },
         },
         {
           name: 'minOrderQuantity',
@@ -291,7 +314,13 @@ export const Products: CollectionConfig = {
 
   hooks: {
     // Price history first: it must be recorded even if cache invalidation fails.
-    afterChange: [recordPriceHistory, alertOnLowStock, revalidateProduct],
+    afterChange: [
+      recordPriceHistory,
+      recordOpeningBalance,
+      auditManualStockEdit,
+      alertOnLowStock,
+      revalidateProduct,
+    ],
     afterDelete: [revalidateProductDelete],
     beforeValidate: [
       async ({ data, req, operation, originalDoc }) => {

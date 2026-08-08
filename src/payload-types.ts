@@ -80,6 +80,7 @@ export interface Config {
     customers: Customer;
     coupons: Coupon;
     'stock-alerts': StockAlert;
+    'stock-movements': StockMovement;
     counters: Counter;
     'price-history': PriceHistory;
     'payload-kv': PayloadKv;
@@ -101,6 +102,7 @@ export interface Config {
     customers: CustomersSelect<false> | CustomersSelect<true>;
     coupons: CouponsSelect<false> | CouponsSelect<true>;
     'stock-alerts': StockAlertsSelect<false> | StockAlertsSelect<true>;
+    'stock-movements': StockMovementsSelect<false> | StockMovementsSelect<true>;
     counters: CountersSelect<false> | CountersSelect<true>;
     'price-history': PriceHistorySelect<false> | PriceHistorySelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
@@ -195,6 +197,10 @@ export interface Product {
    * Single-unit price in EUR, e.g. 12.50
    */
   basePrice: number;
+  /**
+   * What you pay per unit. Never shown to customers — used for margin reporting only.
+   */
+  costPrice?: number | null;
   unit: 'piece' | 'kg' | 'l' | 'm' | 'box' | 'pack' | 'set';
   /**
    * Optional. Cheaper unit prices at higher quantities. Ranges must not overlap, and only the last tier may be left open-ended.
@@ -228,6 +234,9 @@ export interface Product {
    * Optional. Empty means the sale runs until removed.
    */
   saleEndsAt?: string | null;
+  /**
+   * Running balance maintained from the stock ledger. To receive goods or write off damage, add a Stock Movement — editing this directly is recorded as a correction.
+   */
   stock: number;
   minOrderQuantity: number;
   /**
@@ -658,6 +667,39 @@ export interface StockAlert {
   createdAt: string;
 }
 /**
+ * Every stock change and its reason. Add a movement to receive goods or write off damage — do not edit the stock field on a product directly.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "stock-movements".
+ */
+export interface StockMovement {
+  id: number;
+  product: number | Product;
+  /**
+   * Positive to add stock, negative to remove. Zero is rejected.
+   */
+  delta: number;
+  reason: 'sale' | 'cancellation' | 'return' | 'receiving' | 'damage' | 'stocktake' | 'correction';
+  /**
+   * Stock level immediately after this movement was applied.
+   */
+  balanceAfter?: number | null;
+  /**
+   * Order number, delivery note, or invoice reference.
+   */
+  reference?: string | null;
+  /**
+   * Who recorded it, or "system" for automatic movements.
+   */
+  recordedBy?: string | null;
+  /**
+   * Why. Especially worth filling in for damage and corrections.
+   */
+  note?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * Internal sequence counters, incremented atomically at checkout. Read-only by design.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -763,6 +805,10 @@ export interface PayloadLockedDocument {
         value: number | StockAlert;
       } | null)
     | ({
+        relationTo: 'stock-movements';
+        value: number | StockMovement;
+      } | null)
+    | ({
         relationTo: 'counters';
         value: number | Counter;
       } | null)
@@ -832,6 +878,7 @@ export interface ProductsSelect<T extends boolean = true> {
   description?: T;
   sku?: T;
   basePrice?: T;
+  costPrice?: T;
   unit?: T;
   pricingTiers?:
     | T
@@ -1114,6 +1161,21 @@ export interface StockAlertsSelect<T extends boolean = true> {
   email?: T;
   locale?: T;
   notifiedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "stock-movements_select".
+ */
+export interface StockMovementsSelect<T extends boolean = true> {
+  product?: T;
+  delta?: T;
+  reason?: T;
+  balanceAfter?: T;
+  reference?: T;
+  recordedBy?: T;
+  note?: T;
   updatedAt?: T;
   createdAt?: T;
 }
