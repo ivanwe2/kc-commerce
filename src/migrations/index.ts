@@ -8,6 +8,7 @@ import * as migration_20260807_200000_search_index from './20260807_200000_searc
 import * as migration_20260807_200329_growth from './20260807_200329_growth';
 import * as migration_20260808_110135_stock_restored from './20260808_110135_stock_restored';
 import * as migration_20260808_111444_stock_ledger from './20260808_111444_stock_ledger';
+import * as migration_20260808_112754_returns from './20260808_112754_returns';
 
 export const migrations = [
   {
@@ -58,6 +59,11 @@ export const migrations = [
   {
     up: migration_20260808_111444_stock_ledger.up,
     down: migration_20260808_111444_stock_ledger.down,
-    name: '20260808_111444_stock_ledger'
+    name: '20260808_111444_stock_ledger',
+  },
+  {
+    up: migration_20260808_112754_returns.up,
+    down: migration_20260808_112754_returns.down,
+    name: '20260808_112754_returns'
   },
 ];

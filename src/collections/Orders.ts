@@ -364,6 +364,85 @@ export const Orders: CollectionConfig = {
       },
     },
     {
+      name: 'packingSlipLink',
+      type: 'ui',
+      admin: {
+        position: 'sidebar',
+        components: {
+          Field: '@/components/admin/FulfilmentLinks#PackingSlipLink',
+        },
+      },
+    },
+    {
+      /**
+       * Returns handling.
+       *
+       * Kept as a group on the order rather than a separate RMA collection: a
+       * return is a fact about an order, and splitting it across two documents
+       * means two places to look and two things to keep in step. If partial
+       * returns per line item are ever needed, that is the point to reconsider.
+       */
+      name: 'return',
+      type: 'group',
+      admin: {
+        condition: (data) => ['delivered', 'returned'].includes(String(data?.status ?? '')),
+        description: 'Only relevant once an order has been delivered.',
+      },
+      fields: [
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'requestedAt',
+              type: 'date',
+              admin: { date: { pickerAppearance: 'dayAndTime' } },
+            },
+            {
+              name: 'reason',
+              type: 'select',
+              options: [
+                { label: 'Withdrawal (14-day right)', value: 'withdrawal' },
+                { label: 'Faulty / not as described', value: 'faulty' },
+                { label: 'Wrong item sent', value: 'wrong_item' },
+                { label: 'Damaged in transit', value: 'damaged' },
+                { label: 'Other', value: 'other' },
+              ],
+            },
+          ],
+        },
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'refundAmount',
+              type: 'number',
+              min: 0,
+              admin: { description: 'EUR refunded to the customer.' },
+            },
+            {
+              name: 'refundedAt',
+              type: 'date',
+              admin: {
+                date: { pickerAppearance: 'dayAndTime' },
+                description:
+                  'A withdrawal must be refunded within 14 days of being notified.',
+              },
+            },
+          ],
+        },
+        {
+          name: 'restock',
+          type: 'checkbox',
+          defaultValue: true,
+          admin: {
+            description:
+              'Return the goods to stock. Uncheck for items that came back damaged — they are written off separately.',
+          },
+        },
+        { name: 'notes', type: 'textarea' },
+      ],
+    },
+    {
       name: 'locale',
       type: 'text',
       admin: {

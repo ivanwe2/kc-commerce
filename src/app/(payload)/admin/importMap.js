@@ -22,6 +22,8 @@ import { UnderlineFeatureClient as UnderlineFeatureClient_e70f5e05f09f93e00b997e
 import { BoldFeatureClient as BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { ItalicFeatureClient as ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { InvoiceLink as InvoiceLink_22e709acac3e2d8d8f23b3226b4580e7 } from '@/components/admin/InvoiceLink'
+import { PackingSlipLink as PackingSlipLink_8e7cb471ac8070b34f42fb820bb8d4df } from '@/components/admin/FulfilmentLinks'
+import { Dashboard as Dashboard_0e7b23c75ea046975e1784ba01f82886 } from '@/components/admin/Dashboard'
 import { R2ClientUploadHandler as R2ClientUploadHandler_85cc02ed84006fcc91d3aff39dda669d } from '@payloadcms/storage-r2/client'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
@@ -51,6 +53,8 @@ export const importMap = {
   "@payloadcms/richtext-lexical/client#BoldFeatureClient": BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#ItalicFeatureClient": ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@/components/admin/InvoiceLink#InvoiceLink": InvoiceLink_22e709acac3e2d8d8f23b3226b4580e7,
+  "@/components/admin/FulfilmentLinks#PackingSlipLink": PackingSlipLink_8e7cb471ac8070b34f42fb820bb8d4df,
+  "@/components/admin/Dashboard#Dashboard": Dashboard_0e7b23c75ea046975e1784ba01f82886,
   "@payloadcms/storage-r2/client#R2ClientUploadHandler": R2ClientUploadHandler_85cc02ed84006fcc91d3aff39dda669d,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }

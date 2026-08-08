@@ -457,6 +457,26 @@ export interface Order {
    */
   stockRestored?: boolean | null;
   /**
+   * Only relevant once an order has been delivered.
+   */
+  return?: {
+    requestedAt?: string | null;
+    reason?: ('withdrawal' | 'faulty' | 'wrong_item' | 'damaged' | 'other') | null;
+    /**
+     * EUR refunded to the customer.
+     */
+    refundAmount?: number | null;
+    /**
+     * A withdrawal must be refunded within 14 days of being notified.
+     */
+    refundedAt?: string | null;
+    /**
+     * Return the goods to stock. Uncheck for items that came back damaged — they are written off separately.
+     */
+    restock?: boolean | null;
+    notes?: string | null;
+  };
+  /**
    * Language the order was placed in — used for email language.
    */
   locale?: string | null;
@@ -1005,6 +1025,16 @@ export interface OrdersSelect<T extends boolean = true> {
         id?: T;
       };
   stockRestored?: T;
+  return?:
+    | T
+    | {
+        requestedAt?: T;
+        reason?: T;
+        refundAmount?: T;
+        refundedAt?: T;
+        restock?: T;
+        notes?: T;
+      };
   locale?: T;
   updatedAt?: T;
   createdAt?: T;
