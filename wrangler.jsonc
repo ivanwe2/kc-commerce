@@ -1,6 +1,8 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "main": ".open-next/worker.js",
+  // A wrapper around OpenNext's generated worker that adds `scheduled` and
+  // `queue` handlers. See worker.js for why it exists.
+  "main": "worker.js",
   "name": "kc-commerce",
   "compatibility_date": "2026-08-06",
   "compatibility_flags": [
@@ -61,25 +63,46 @@
   },
 
   /**
-   * NO "triggers.crons" HERE, deliberately.
+   * Scheduled work, running natively on Cloudflare.
    *
-   * Cloudflare Cron Triggers invoke a Worker's `scheduled` handler. OpenNext
-   * compiles a Next app into a FETCH-ONLY Worker — there is no `scheduled`
-   * export for the trigger to reach. Declaring crons here would schedule events
-   * that arrive and fail, which is worse than not scheduling them, because the
-   * dashboard would show a configured cron that silently never runs its job.
+   * These strings are the job registry keys in src/lib/jobs.ts — the wrapper
+   * passes `event.cron` straight through, so a schedule is declared in exactly
+   * two places that read identically.
    *
-   * Scheduling therefore lives in .github/workflows/cron.yml, which POSTs to
-   * /api/cron with CRON_SECRET. That is a real production pattern, it costs
-   * nothing, and — unlike a Worker handler that cannot exist — it is verifiable
-   * before deploying.
-   *
-   * To move scheduling onto Cloudflare later, point `main` at a small custom
-   * entry that re-exports OpenNext's worker and adds a `scheduled` handler
-   * forwarding to the same route. The job code does not change; only what calls
-   * it does. Queues need the same custom entry for their `queue` handler, which
-   * is why they are not configured here either.
+   * Times are UTC. Bulgaria is UTC+2 in winter and UTC+3 in summer, so the
+   * 07:00 digest lands between 09:00 and 10:00 local: before the shop opens
+   * either way, which is the property that matters.
    */
+  "triggers": {
+    "crons": [
+      // Back-in-stock notices — frequent, so a restock feels prompt.
+      "*/15 * * * *",
+      // Low-stock digest, before the shop opens.
+      "0 7 * * *",
+      // Housekeeping, Sunday night, when nobody is shopping.
+      "0 3 * * 0",
+    ],
+  },
+
+  /**
+   * Queues are NOT declared here yet, and that is deliberate.
+   *
+   * The `queue` handler exists in worker.js and is ready, but a consumer
+   * pointing at a queue that has not been created fails the deploy outright. To
+   * enable async work:
+   *
+   *   wrangler queues create kc-commerce-jobs
+   *
+   * then uncomment both blocks below and implement the message handler at
+   * src/app/(payload)/api/queue/route.ts.
+   *
+   * The obvious first use is bulk CSV product import, which cannot run inline
+   * within a Worker's CPU budget for any realistic file size.
+   */
+  // "queues": {
+  //   "producers": [{ "binding": "JOB_QUEUE", "queue": "kc-commerce-jobs" }],
+  //   "consumers": [{ "queue": "kc-commerce-jobs", "max_batch_size": 10, "max_retries": 3 }],
+  // },
 
   "observability": {
     "enabled": true,

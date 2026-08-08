@@ -1,23 +1,17 @@
-name: Scheduled jobs
+name: Run a job manually
 
-# Calls the authenticated /api/cron endpoint on a schedule.
+# MANUAL ONLY. Scheduling runs natively on Cloudflare Cron Triggers now — see
+# `triggers.crons` in wrangler.jsonc and the `scheduled` handler in worker.js.
 #
-# Why here rather than Cloudflare Cron Triggers: those invoke a Worker's
-# `scheduled` handler, and OpenNext compiles a Next app into a fetch-only
-# Worker with no such export. See the note in wrangler.jsonc.
+# The schedule was deliberately removed rather than kept as a backup: two
+# schedulers firing the same jobs would send the daily low-stock digest twice.
+# (Back-in-stock and maintenance are idempotent, so those would be harmless —
+# the digest is the one that would visibly misbehave.)
 #
-# GitHub's scheduled runs are best-effort and can be delayed by several minutes
-# under load. Every job is written to tolerate that — none of them depend on
-# running at an exact moment, and all are safe to run twice.
+# This remains as a "run it now" button: useful for testing a job against
+# production without waiting for its window, or re-running one after a failure.
 
 on:
-  schedule:
-    # Back-in-stock notices — frequent, so a restock feels prompt.
-    - cron: '*/15 * * * *'
-    # Low-stock digest at 07:00 UTC, before the shop opens in Bulgaria.
-    - cron: '0 7 * * *'
-    # Weekly maintenance, 03:00 Sunday, when nobody is shopping.
-    - cron: '0 3 * * 0'
   workflow_dispatch:
     inputs:
       schedule:
@@ -41,9 +35,7 @@ jobs:
         env:
           SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          # github.event.schedule is set for scheduled runs; the input covers
-          # manual dispatch.
-          SCHEDULE: ${{ github.event.schedule || inputs.schedule }}
+          SCHEDULE: ${{ inputs.schedule }}
         run: |
           if [ -z "$SITE_URL" ] || [ -z "$CRON_SECRET" ]; then
             echo "::error::NEXT_PUBLIC_SITE_URL variable and CRON_SECRET secret must both be set."
