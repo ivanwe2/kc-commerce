@@ -1,17 +1,23 @@
-name: Run a job manually
+name: Scheduled jobs
 
-# MANUAL ONLY. Scheduling runs natively on Cloudflare Cron Triggers now — see
-# `triggers.crons` in wrangler.jsonc and the `scheduled` handler in worker.js.
+# Calls the authenticated /api/cron endpoint on a schedule.
 #
-# The schedule was deliberately removed rather than kept as a backup: two
-# schedulers firing the same jobs would send the daily low-stock digest twice.
-# (Back-in-stock and maintenance are idempotent, so those would be harmless —
-# the digest is the one that would visibly misbehave.)
+# This is the scheduler, not a fallback. Cloudflare Cron Triggers cannot be used
+# here — the reasoning, including the wrapper approach that was tried and ruled
+# out, is recorded in wrangler.jsonc.
 #
-# This remains as a "run it now" button: useful for testing a job against
-# production without waiting for its window, or re-running one after a failure.
+# GitHub's scheduled runs are best-effort and can be delayed several minutes
+# under load. Every job tolerates that: none depend on running at an exact
+# moment, and all are safe to run twice.
 
 on:
+  schedule:
+    # Back-in-stock notices — frequent, so a restock feels prompt.
+    - cron: '*/15 * * * *'
+    # Low-stock digest at 07:00 UTC, before the shop opens in Bulgaria.
+    - cron: '0 7 * * *'
+    # Weekly maintenance, 03:00 Sunday, when nobody is shopping.
+    - cron: '0 3 * * 0'
   workflow_dispatch:
     inputs:
       schedule:
@@ -35,7 +41,9 @@ jobs:
         env:
           SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          SCHEDULE: ${{ inputs.schedule }}
+          # github.event.schedule is set for scheduled runs; the input covers
+          # manual dispatch.
+          SCHEDULE: ${{ github.event.schedule || inputs.schedule }}
         run: |
           if [ -z "$SITE_URL" ] || [ -z "$CRON_SECRET" ]; then
             echo "::error::NEXT_PUBLIC_SITE_URL variable and CRON_SECRET secret must both be set."
