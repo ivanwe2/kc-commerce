@@ -1,0 +1,68 @@
+name: Scheduled jobs
+
+# Calls the authenticated /api/cron endpoint on a schedule.
+#
+# Why here rather than Cloudflare Cron Triggers: those invoke a Worker's
+# `scheduled` handler, and OpenNext compiles a Next app into a fetch-only
+# Worker with no such export. See the note in wrangler.jsonc.
+#
+# GitHub's scheduled runs are best-effort and can be delayed by several minutes
+# under load. Every job is written to tolerate that — none of them depend on
+# running at an exact moment, and all are safe to run twice.
+
+on:
+  schedule:
+    # Back-in-stock notices — frequent, so a restock feels prompt.
+    - cron: '*/15 * * * *'
+    # Low-stock digest at 07:00 UTC, before the shop opens in Bulgaria.
+    - cron: '0 7 * * *'
+    # Weekly maintenance, 03:00 Sunday, when nobody is shopping.
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+    inputs:
+      schedule:
+        description: Which job to run
+        required: true
+        default: '*/15 * * * *'
+        type: choice
+        options:
+          - '*/15 * * * *'
+          - '0 7 * * *'
+          - '0 3 * * 0'
+
+jobs:
+  run:
+    name: Run scheduled job
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Call the cron endpoint
+        env:
+          SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          # github.event.schedule is set for scheduled runs; the input covers
+          # manual dispatch.
+          SCHEDULE: ${{ github.event.schedule || inputs.schedule }}
+        run: |
+          if [ -z "$SITE_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::error::NEXT_PUBLIC_SITE_URL variable and CRON_SECRET secret must both be set."
+            exit 1
+          fi
+
+          echo "Running schedule: $SCHEDULE"
+
+          RESPONSE=$(curl -sS -w '\n%{http_code}' -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            --data '' \
+            "$SITE_URL/api/cron?schedule=$(printf %s "$SCHEDULE" | jq -sRr @uri)")
+
+          BODY=$(echo "$RESPONSE" | head -n -1)
+          STATUS=$(echo "$RESPONSE" | tail -n 1)
+
+          echo "$BODY"
+
+          if [ "$STATUS" != "200" ]; then
+            echo "::error::Cron endpoint returned $STATUS"
+            exit 1
+          fi

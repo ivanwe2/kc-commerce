@@ -60,6 +60,27 @@
     "NEXT_PUBLIC_CF_IMAGES": "false",
   },
 
+  /**
+   * NO "triggers.crons" HERE, deliberately.
+   *
+   * Cloudflare Cron Triggers invoke a Worker's `scheduled` handler. OpenNext
+   * compiles a Next app into a FETCH-ONLY Worker — there is no `scheduled`
+   * export for the trigger to reach. Declaring crons here would schedule events
+   * that arrive and fail, which is worse than not scheduling them, because the
+   * dashboard would show a configured cron that silently never runs its job.
+   *
+   * Scheduling therefore lives in .github/workflows/cron.yml, which POSTs to
+   * /api/cron with CRON_SECRET. That is a real production pattern, it costs
+   * nothing, and — unlike a Worker handler that cannot exist — it is verifiable
+   * before deploying.
+   *
+   * To move scheduling onto Cloudflare later, point `main` at a small custom
+   * entry that re-exports OpenNext's worker and adds a `scheduled` handler
+   * forwarding to the same route. The job code does not change; only what calls
+   * it does. Queues need the same custom entry for their `queue` handler, which
+   * is why they are not configured here either.
+   */
+
   "observability": {
     "enabled": true,
   },

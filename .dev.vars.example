@@ -7,6 +7,12 @@
 # Required. Signs Payload auth tokens. Generate with: openssl rand -hex 32
 PAYLOAD_SECRET=
 
+# Local origin. Without this, NEXT_PUBLIC_SITE_URL falls back to the value in
+# wrangler.jsonc (the workers.dev URL), so localhost is not a trusted origin and
+# Payload's CSRF protection rejects cookie-authenticated writes from the admin
+# with a 403 that looks like a permissions bug.
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
 # Optional until Phase 5 (transactional email)
 RESEND_API_KEY=
 RESEND_FROM_EMAIL=orders@kctrading.bg
