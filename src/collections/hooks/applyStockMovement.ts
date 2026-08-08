@@ -86,7 +86,34 @@ export const applyStockMovement: CollectionAfterChangeHook = async ({ doc, req, 
       data: { balanceAfter: row.stock },
     })
   } catch (error) {
-    req.payload.logger.error({ err: error, productId, delta }, 'Failed to apply stock movement')
+    /**
+     * Could not apply — remove the row rather than leave the ledger unbalanced.
+     *
+     * The usual cause is running outside a request context: `getCloudflareContext`
+     * resolves inside the Worker and under `next dev`, but not in a plain CLI
+     * script, so a seed or maintenance script creating movements would otherwise
+     * leave rows that never moved a balance.
+     *
+     * The invariant that makes this ledger worth keeping is that its sum equals
+     * the running balance. Preserving a row we failed to apply trades a loud,
+     * recoverable failure for a permanently wrong reconciliation.
+     */
+    req.payload.logger.error(
+      { err: error, productId, delta },
+      'Stock movement could not be applied — removing the ledger row to keep it balanced. ' +
+        'Stock movements must be created from a request context, not a CLI script.',
+    )
+
+    try {
+      await req.payload.delete({
+        collection: 'stock-movements',
+        id: doc.id,
+        overrideAccess: true,
+        context: { skipApply: true },
+      })
+    } catch {
+      // Nothing further to do; the error above is the record.
+    }
   }
 
   return doc
