@@ -66,12 +66,62 @@ jobs:
           NEXT_PUBLIC_SITE_URL: https://example.com
         run: pnpm build
 
+      - name: Smoke-test the built Worker
+        env:
+          PAYLOAD_SECRET: ci-build-only-secret-not-used-for-signing
+          NEXT_PUBLIC_SITE_URL: http://localhost:8787
+        # Building the Worker is not the same as it working. A wrapper around
+        # OpenNext's entry once built cleanly and then failed on every request
+        # with "handler3 is not a function" — CI was green while the artifact
+        # served nothing at all.
+        #
+        # So: boot the real Worker under wrangler and make it answer. The health
+        # route also performs a D1 round-trip, which means this proves the
+        # bindings resolve rather than merely that the bundle parses.
+        run: |
+          # Clean first. `next dev` and `next build` write to the same .next
+          # directory, and building the Worker on top of dev output produces an
+          # artifact that builds fine and then fails at runtime with
+          # "handler3 is not a function". That contamination cost a wrongly
+          # diagnosed revert; it is not going to cost a broken deploy.
+          rm -rf .next .open-next
+          pnpm exec opennextjs-cloudflare build
+          pnpm exec wrangler dev --port 8787 --local &
+          WORKER_PID=$!
+
+          for i in $(seq 1 45); do
+            if curl -sf --max-time 3 http://localhost:8787/api/health > /tmp/health.json 2>/dev/null; then
+              break
+            fi
+            sleep 3
+          done
+
+          cat /tmp/health.json || true
+          echo
+
+          if ! grep -q '"database":"ok"' /tmp/health.json 2>/dev/null; then
+            echo "::error::The built Worker did not serve a healthy response."
+            kill $WORKER_PID 2>/dev/null || true
+            exit 1
+          fi
+
+          # A storefront page too — health alone would pass even if rendering
+          # were broken.
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 http://localhost:8787/)
+          echo "GET / -> $STATUS"
+
+          kill $WORKER_PID 2>/dev/null || true
+
+          if [ "$STATUS" != "200" ]; then
+            echo "::error::The built Worker did not render the storefront."
+            exit 1
+          fi
+
       - name: Check Worker bundle size
         env:
           PAYLOAD_SECRET: ci-build-only-secret-not-used-for-signing
           NEXT_PUBLIC_SITE_URL: https://example.com
         run: |
-          pnpm exec opennextjs-cloudflare build
           SIZE=$(find .open-next/server-functions -name '*.js' -exec cat {} + | gzip -c | wc -c)
           MB=$(echo "scale=2; $SIZE/1048576" | bc)
           echo "Worker bundle: ${MB} MB gzipped (Cloudflare limit: 10 MB)"
