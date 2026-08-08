@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 import { isAdmin, isAdminOrEditor, isAdminOrEditorField } from '@/access'
 import { sendShippingNotification } from './hooks/orderNotifications'
+import { restoreStockOnCancel } from './hooks/restoreStock'
 
 export const SHIPPING_METHODS = [
   'econt_office',
@@ -342,6 +343,17 @@ export const Orders: CollectionConfig = {
       ],
     },
     {
+      name: 'stockRestored',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: {
+        readOnly: true,
+        position: 'sidebar',
+        description:
+          'Set automatically when a cancellation or return puts this order\'s units back into stock. Prevents double-crediting if the status changes again.',
+      },
+    },
+    {
       name: 'invoiceLink',
       type: 'ui',
       admin: {
@@ -363,7 +375,7 @@ export const Orders: CollectionConfig = {
   ],
 
   hooks: {
-    afterChange: [sendShippingNotification],
+    afterChange: [sendShippingNotification, restoreStockOnCancel],
     beforeChange: [
       async ({ data, req, operation, originalDoc }) => {
         if (operation !== 'update' || !originalDoc) return data

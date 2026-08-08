@@ -444,6 +444,10 @@ export interface Order {
       }[]
     | null;
   /**
+   * Set automatically when a cancellation or return puts this order's units back into stock. Prevents double-crediting if the status changes again.
+   */
+  stockRestored?: boolean | null;
+  /**
    * Language the order was placed in — used for email language.
    */
   locale?: string | null;
@@ -953,6 +957,7 @@ export interface OrdersSelect<T extends boolean = true> {
         changedBy?: T;
         id?: T;
       };
+  stockRestored?: T;
   locale?: T;
   updatedAt?: T;
   createdAt?: T;

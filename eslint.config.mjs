@@ -93,6 +93,11 @@ const eslintConfig = [
     },
   },
   {
+    // A CLI verification script: printing results is the entire point.
+    files: ['e2e.mjs'],
+    rules: { 'no-console': 'off' },
+  },
+  {
     ignores: [
       '.next/',
       '.open-next/',
