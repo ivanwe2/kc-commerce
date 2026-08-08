@@ -7,6 +7,7 @@ import * as migration_20260807_195623_accounts from './20260807_195623_accounts'
 import * as migration_20260807_200000_search_index from './20260807_200000_search_index';
 import * as migration_20260807_200329_growth from './20260807_200329_growth';
 import * as migration_20260808_110135_stock_restored from './20260808_110135_stock_restored';
+import * as migration_20260808_111444_stock_ledger from './20260808_111444_stock_ledger';
 
 export const migrations = [
   {
@@ -52,6 +53,11 @@ export const migrations = [
   {
     up: migration_20260808_110135_stock_restored.up,
     down: migration_20260808_110135_stock_restored.down,
-    name: '20260808_110135_stock_restored'
+    name: '20260808_110135_stock_restored',
+  },
+  {
+    up: migration_20260808_111444_stock_ledger.up,
+    down: migration_20260808_111444_stock_ledger.down,
+    name: '20260808_111444_stock_ledger'
   },
 ];

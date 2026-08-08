@@ -10,7 +10,12 @@ import { sendOrderConfirmation } from '@/lib/email'
 import { multiplyMoney, roundMoney, sumMoney } from '@/lib/money'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { calculateShippingCost, courierFor, type ShippingMethod } from '@/lib/shipping'
-import { releaseStock, reserveStock, type StockRequest } from '@/lib/stock'
+import {
+  attachReferenceToMovements,
+  releaseStock,
+  reserveStock,
+  type StockRequest,
+} from '@/lib/stock'
 import {
   checkoutSchema,
   flattenCheckoutErrors,
@@ -167,7 +172,7 @@ export async function createOrder(input: unknown): Promise<CheckoutResult> {
     quantity: line.quantity,
   }))
 
-  const reservation = await reserveStock(stockRequests)
+  const reservation = await reserveStock(stockRequests, { reason: 'sale' })
 
   if (!reservation.ok) {
     const failed = productsById.get(reservation.failedProductId)
@@ -188,6 +193,10 @@ export async function createOrder(input: unknown): Promise<CheckoutResult> {
     // sequence number and leave a visible gap in the order book.
     const sequence = await nextCounterValue(orderCounterKey(year))
     const orderNumber = formatOrderNumber(year, sequence)
+
+    // The ledger rows were written before this number existed; give them their
+    // reference now so every movement can be traced to its order.
+    await attachReferenceToMovements(reservation.movementIds, orderNumber)
 
     const isToOffice = data.shippingMethod.endsWith('_office')
 

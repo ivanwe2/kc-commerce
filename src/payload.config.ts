@@ -20,6 +20,7 @@ import { Pages } from './collections/Pages'
 import { PriceHistory } from './collections/PriceHistory'
 import { Reviews } from './collections/Reviews'
 import { StockAlerts } from './collections/StockAlerts'
+import { StockMovements } from './collections/StockMovements'
 import { Products } from './collections/Products'
 import { Users } from './collections/Users'
 import { Settings } from './globals/Settings'
@@ -153,6 +154,7 @@ export default buildConfig({
     Customers,
     Coupons,
     StockAlerts,
+    StockMovements,
     Counters,
     PriceHistory,
   ],

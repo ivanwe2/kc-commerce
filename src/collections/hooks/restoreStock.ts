@@ -50,7 +50,10 @@ export const restoreStockOnCancel: CollectionAfterChangeHook = async ({
   // Entering a releasing status: give the units back.
   if (isReleasing && !wasReleasing && !alreadyRestored) {
     try {
-      await releaseStock(items)
+      await releaseStock(items, {
+        reason: doc.status === 'returned' ? 'return' : 'cancellation',
+        reference: doc.orderNumber,
+      })
       await req.payload.update({
         collection: 'orders',
         id: doc.id,
@@ -94,7 +97,7 @@ export const restoreStockOnCancel: CollectionAfterChangeHook = async ({
    */
   if (!isReleasing && wasReleasing && alreadyRestored) {
     try {
-      const result = await reserveStock(items)
+      const result = await reserveStock(items, { reason: 'sale', reference: doc.orderNumber })
 
       if (!result.ok) {
         req.payload.logger.warn(
