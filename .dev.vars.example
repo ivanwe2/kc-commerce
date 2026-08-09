@@ -29,3 +29,17 @@ CRON_SECRET=
 
 # trace | debug | info | warn | error | fatal
 PAYLOAD_LOG_LEVEL=info
+
+# Cloudflare Turnstile — bot protection on the public contact and withdrawal
+# forms. Create a widget at Cloudflare dashboard -> Turnstile.
+#
+# Both halves are needed. With neither set the widget does not render and the
+# server does not enforce, so the forms work unchanged — which is deliberate:
+# the withdrawal form is legally required to function, and failing closed on a
+# missing key would break it.
+#
+# Cloudflare publishes always-passing test keys for local development:
+#   NEXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA
+#   TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
+# NEXT_PUBLIC_TURNSTILE_SITE_KEY=
+# TURNSTILE_SECRET_KEY=

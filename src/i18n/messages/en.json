@@ -195,7 +195,8 @@
     "productUnavailable": "{product} is no longer available",
     "orderFailed": "Your order could not be placed. Please try again.",
     "tooManyRequests": "Too many attempts. Please wait a moment.",
-    "orderNotFound": "No order found with that number and email."
+    "orderNotFound": "No order found with that number and email.",
+    "botCheckFailed": "The bot check did not pass. Please try again."
   },
   "orders": {
     "trackOrder": "Track your order",

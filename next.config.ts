@@ -61,7 +61,56 @@ function readDevVars(): Record<string, string> {
   }
 }
 
+/**
+ * Reads `vars` out of wrangler.jsonc.
+ *
+ * JSONC, so comments and trailing commas have to go before JSON.parse. Worth
+ * the small parser: these are the values production actually deploys with, and
+ * they are otherwise invisible to the build.
+ */
+function readWranglerVars(): Record<string, string> {
+  try {
+    const raw = readFileSync(resolve(process.cwd(), 'wrangler.jsonc'), 'utf8')
+    const stripped = raw
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:"'])\/\/.*$/gm, '$1')
+      .replace(/,(\s*[}\]])/g, '$1')
+
+    const parsed = JSON.parse(stripped) as { vars?: Record<string, string> }
+    return parsed.vars ?? {}
+  } catch {
+    return {}
+  }
+}
+
+/**
+ * NEXT_PUBLIC_* values must exist in process.env when Next COMPILES, because
+ * that is when they are inlined into the client bundle. Neither source here
+ * satisfies that on its own:
+ *
+ *   - wrangler.jsonc `vars` are injected by the Worker runtime, long after the
+ *     build;
+ *   - .dev.vars is read by Wrangler's platform proxy from inside
+ *     payload.config.ts, which runs per request.
+ *
+ * The result is a client bundle carrying the literal string
+ * "process.env.NEXT_PUBLIC_CF_IMAGES" that evaluates to undefined forever —
+ * so enabling Cloudflare Images in wrangler.jsonc would silently fail to turn
+ * the image loader on. Reading both here and declaring them through `env`
+ * makes the inlining actually happen.
+ *
+ * .dev.vars wins locally, which is what a developer overriding a value expects.
+ */
 const devVars = readDevVars()
+const wranglerVars = readWranglerVars()
+
+const publicEnv = Object.fromEntries(
+  Object.entries({ ...wranglerVars, ...devVars })
+    .filter(([key]) => key.startsWith('NEXT_PUBLIC_'))
+    // A real environment variable still outranks both, so CI and deploy
+    // pipelines can override without editing files.
+    .map(([key, value]) => [key, process.env[key] ?? value]),
+)
 
 // Next wants bare hostnames here, not full origins.
 const additionalOrigins = (process.env.ADDITIONAL_ORIGINS ?? devVars.ADDITIONAL_ORIGINS ?? '')
@@ -71,6 +120,9 @@ const additionalOrigins = (process.env.ADDITIONAL_ORIGINS ?? devVars.ADDITIONAL_
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+
+  // Inlined into the client bundle at build time. See publicEnv above.
+  env: publicEnv,
 
   allowedDevOrigins: additionalOrigins,
 

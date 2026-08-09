@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { useState, useTransition } from 'react'
 
 import { sendContact } from '@/app/[locale]/(frontend)/contact/actions'
+import { Turnstile } from '@/components/Turnstile'
 import { Button } from '@/components/ui/Button'
 
 export function ContactForm() {
@@ -15,6 +16,10 @@ export function ContactForm() {
   const [error, setError] = useState<string | null>(null)
   const [isSent, setIsSent] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
+  // A Turnstile token is single-use. Bumping this after a rejected submission
+  // re-renders the widget, or every retry would fail on the spent token.
+  const [turnstileNonce, setTurnstileNonce] = useState(0)
 
   if (isSent) {
     return (
@@ -45,12 +50,18 @@ export function ContactForm() {
           subject: String(formData.get('subject') ?? ''),
           message: String(formData.get('message') ?? ''),
           website: String(formData.get('website') ?? ''),
+          turnstileToken: turnstileToken ?? undefined,
         }
 
         startTransition(async () => {
           const result = await sendContact(payload)
-          if (result.success) setIsSent(true)
-          else setError(result.error)
+          if (result.success) {
+            setIsSent(true)
+          } else {
+            setError(result.error)
+            setTurnstileToken(null)
+            setTurnstileNonce((value) => value + 1)
+          }
         })
       }}
     >
@@ -96,6 +107,8 @@ export function ContactForm() {
           {errorT(error as 'genericText')}
         </p>
       )}
+
+      <Turnstile onToken={setTurnstileToken} resetSignal={turnstileNonce} />
 
       <Button type="submit" variant="primary" className="mt-4" disabled={isPending}>
         {isPending ? common('loading') : 'Изпрати / Send'}
