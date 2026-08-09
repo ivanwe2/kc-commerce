@@ -29,8 +29,8 @@ type ProductQueryOptions = {
   locale: StorefrontLocale
   limit?: number
   page?: number
-  categoryId?: number
-  brandId?: number
+  categoryIds?: number[]
+  brandIds?: number[]
   search?: string
   minPrice?: number
   maxPrice?: number
@@ -45,8 +45,8 @@ export async function findProducts({
   locale,
   limit = 12,
   page = 1,
-  categoryId,
-  brandId,
+  categoryIds,
+  brandIds,
   search,
   minPrice,
   maxPrice,
@@ -59,8 +59,14 @@ export async function findProducts({
 
   const and: Where[] = [{ isActive: { equals: true } }]
 
-  if (categoryId) and.push({ category: { equals: categoryId } })
-  if (brandId) and.push({ brand: { equals: brandId } })
+  /**
+   * Multi-select uses `in`, so choosing two categories widens the result set
+   * rather than narrowing it to nothing. Selecting "Cleaning" AND "Tools" with
+   * an equality match would return zero products, since no product is in both —
+   * which reads as a broken filter rather than an empty category.
+   */
+  if (categoryIds?.length) and.push({ category: { in: categoryIds } })
+  if (brandIds?.length) and.push({ brand: { in: brandIds } })
   if (featuredOnly) and.push({ isFeatured: { equals: true } })
   if (inStockOnly) and.push({ stock: { greater_than: 0 } })
 

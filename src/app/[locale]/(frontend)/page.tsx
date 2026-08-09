@@ -3,7 +3,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server'
 
 import { BannerStrip } from '@/components/BannerStrip'
 import { MediaImage } from '@/components/MediaImage'
-import { ProductCard } from '@/components/product/ProductCard'
+import { ProductRow } from '@/components/product/ProductRow'
 import { referencePricesForMany } from '@/lib/discount'
 import { buttonVariants } from '@/components/ui/Button'
 import { Link } from '@/i18n/routing'
@@ -35,16 +35,18 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   const productT = await getTranslations('product')
   const trust = await getTranslations('trust')
 
-  const [settings, featured, categories, onSale] = await Promise.all([
+  const [settings, featured, categories, onSale, newArrivals] = await Promise.all([
     getSettings(storefrontLocale),
-    findProducts({ locale: storefrontLocale, featuredOnly: true, limit: 8 }),
+    findProducts({ locale: storefrontLocale, featuredOnly: true, limit: 12 }),
     findCategories(storefrontLocale),
-    findProducts({ locale: storefrontLocale, onSaleOnly: true, limit: 4 }),
+    findProducts({ locale: storefrontLocale, onSaleOnly: true, limit: 12 }),
+    findProducts({ locale: storefrontLocale, limit: 12, sort: '-createdAt' }),
   ])
 
   const references = await referencePricesForMany(await getPayloadClient(), [
     ...featured.docs,
     ...onSale.docs,
+    ...newArrivals.docs,
   ])
 
   return (
@@ -83,56 +85,30 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         featured grid wastes it. Rendered only when something is actually on
         sale, so the homepage never shows an empty "Offers" heading.
       */}
-      {onSale.docs.length > 0 && (
-        <section className="container-page py-12">
-          <div className="flex items-baseline justify-between gap-4">
-            <h2 className="text-xl font-semibold text-heading">{productT('saleSection')}</h2>
-            <Link
-              href="/products?onSale=1"
-              className="text-sm font-medium text-primary hover:underline"
-            >
-              {productT('viewAllSales')}
-            </Link>
-          </div>
+      <ProductRow
+        title={productT('saleSection')}
+        products={onSale.docs}
+        viewAllHref="/products?onSale=1"
+        locale={locale}
+        referencePrices={references}
+        priority
+      />
 
-          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {onSale.docs.map((product, index) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                locale={locale}
-                priority={index < 4}
-                referencePrice={references.get(product.id)}
-              />
-            ))}
-          </div>
-        </section>
-      )}
+      <ProductRow
+        title={productT('featured')}
+        products={featured.docs}
+        viewAllHref="/products?featured=1"
+        locale={locale}
+        referencePrices={references}
+      />
 
-      {featured.docs.length > 0 && (
-        <section className="container-page py-12">
-          <div className="flex items-baseline justify-between gap-4">
-            <h2 className="text-xl font-semibold text-heading">{productT('featured')}</h2>
-            <Link href="/products" className="text-sm font-medium text-primary hover:underline">
-              {t('viewAll')}
-            </Link>
-          </div>
-
-          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {featured.docs.map((product, index) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                locale={locale}
-                // Only the first row is above the fold; eager-loading the rest
-                // would compete with it for bandwidth and hurt LCP.
-                priority={index < 4}
-                referencePrice={references.get(product.id)}
-              />
-            ))}
-          </div>
-        </section>
-      )}
+      <ProductRow
+        title={productT('newArrivals')}
+        products={newArrivals.docs}
+        viewAllHref="/products?sort=newest"
+        locale={locale}
+        referencePrices={references}
+      />
 
       {categories.length > 0 && (
         <section className="bg-surface">

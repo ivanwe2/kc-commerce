@@ -53,7 +53,7 @@ export default async function BrandPage({
 
   const results = await findProducts({
     locale: locale as StorefrontLocale,
-    brandId: brand.id,
+    brandIds: [brand.id],
     page,
     limit: PAGE_SIZE,
   })
