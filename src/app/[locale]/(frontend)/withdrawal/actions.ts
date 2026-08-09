@@ -5,6 +5,7 @@ import { getPayload } from 'payload'
 import { z } from 'zod'
 
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
+import { verifyTurnstile } from '@/lib/turnstile'
 
 /**
  * Electronic withdrawal function.
@@ -26,6 +27,7 @@ const withdrawalSchema = z.object({
   lastName: z.string().trim().min(2).max(50),
   email: z.email({ message: 'invalidEmail' }),
   reason: z.string().trim().max(1000).optional(),
+  turnstileToken: z.string().optional(),
 })
 
 export type WithdrawalResult =
@@ -40,6 +42,10 @@ export async function submitWithdrawal(input: unknown): Promise<WithdrawalResult
   const data = parsed.data
 
   const ip = await getClientIp()
+
+  const turnstile = await verifyTurnstile(data.turnstileToken, ip)
+  if (!turnstile.ok) return { success: false, error: 'botCheckFailed' }
+
   const limit = await checkRateLimit({ identifier: ip, action: 'withdrawal', limit: 10 })
   if (!limit.allowed) return { success: false, error: 'tooManyRequests' }
 

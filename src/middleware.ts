@@ -47,7 +47,9 @@ const BASE_HEADERS: ReadonlyArray<readonly [string, string]> = [
  */
 const STOREFRONT_CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  // challenges.cloudflare.com is Turnstile. Without it the widget is blocked by
+  // CSP and the forms become unsubmittable once bot protection is enabled.
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
@@ -55,6 +57,8 @@ const STOREFRONT_CSP = [
   "form-action 'self'",
   "base-uri 'self'",
   "object-src 'none'",
+  // Turnstile renders its challenge in an iframe, which frame-src must permit.
+  "frame-src 'self' https://challenges.cloudflare.com",
   "frame-ancestors 'none'",
 ].join('; ')
 

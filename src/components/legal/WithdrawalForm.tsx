@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { useState, useTransition } from 'react'
 
 import { submitWithdrawal } from '@/app/[locale]/(frontend)/withdrawal/actions'
+import { Turnstile } from '@/components/Turnstile'
 import { Button } from '@/components/ui/Button'
 
 /**
@@ -23,6 +24,8 @@ export function WithdrawalForm() {
   const [error, setError] = useState<string | null>(null)
   const [isDone, setIsDone] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
+  const [turnstileNonce, setTurnstileNonce] = useState(0)
 
   if (isDone) {
     return (
@@ -56,12 +59,18 @@ export function WithdrawalForm() {
           lastName: String(formData.get('lastName') ?? ''),
           email: String(formData.get('email') ?? ''),
           reason: String(formData.get('reason') ?? '') || undefined,
+          turnstileToken: turnstileToken ?? undefined,
         }
 
         startTransition(async () => {
           const result = await submitWithdrawal(payload)
-          if (result.success) setIsDone(true)
-          else setError(result.error)
+          if (result.success) {
+            setIsDone(true)
+          } else {
+            setError(result.error)
+            setTurnstileToken(null)
+            setTurnstileNonce((value) => value + 1)
+          }
         })
       }}
     >
@@ -117,6 +126,8 @@ export function WithdrawalForm() {
           {errorT(error as 'fieldRequired')}
         </p>
       )}
+
+      <Turnstile onToken={setTurnstileToken} resetSignal={turnstileNonce} />
 
       <Button type="submit" variant="primary" className="mt-4" disabled={isPending}>
         {isPending ? common('loading') : 'Изпрати / Submit'}

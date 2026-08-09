@@ -21,6 +21,8 @@ const envSchema = z.object({
   ORDER_NOTIFICATION_EMAIL: z.email().optional(),
   CRON_SECRET: z.string().optional(),
   NEXT_PUBLIC_PLAUSIBLE_DOMAIN: z.string().optional(),
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().optional(),
+  TURNSTILE_SECRET_KEY: z.string().optional(),
   PAYLOAD_LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
 })
 
@@ -51,6 +53,8 @@ export function getEnv(): Env {
     ORDER_NOTIFICATION_EMAIL: process.env.ORDER_NOTIFICATION_EMAIL,
     CRON_SECRET: process.env.CRON_SECRET,
     NEXT_PUBLIC_PLAUSIBLE_DOMAIN: process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN,
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+    TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
     PAYLOAD_LOG_LEVEL: process.env.PAYLOAD_LOG_LEVEL,
   })
 
