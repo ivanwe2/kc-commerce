@@ -63,7 +63,7 @@ export default async function CategoryPage({
 
   const results = await findProducts({
     locale: storefrontLocale,
-    categoryId: category.id,
+    categoryIds: [category.id],
     page,
     limit: PAGE_SIZE,
   })

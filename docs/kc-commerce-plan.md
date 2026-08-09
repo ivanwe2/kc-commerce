@@ -398,7 +398,15 @@ DO NOT:
   ✗ Use more than 3 levels of shadow depth across the entire site
   ✗ Use colored backgrounds for page sections (white/slate-50 only)
   ✗ Use icon libraries beyond Lucide React (no FontAwesome, no Heroicons)
-  ✗ Use carousels or sliders for products (use grids)
+  ✗ Use auto-rotating carousels or sliders for products
+      AMENDED 2026-08-09 at the stakeholder's request. The ban stands for
+      AUTO-ADVANCING carousels — they move content out from under the reader,
+      hide most items behind a timer, and are awkward with a screen reader.
+      It does NOT cover horizontally scrollable rows (the eMag/Amazon pattern),
+      which are now used on the homepage: nothing moves on its own, every item
+      is reachable by swipe, tab or arrow key, they work without JavaScript,
+      and the partially-cut card at the edge is what signals there is more.
+      See src/components/product/ProductRow.tsx.
   ✗ Use floating action buttons
   ✗ Add decorative illustrations or SVG artwork
   ✗ Use loading spinners — use skeleton screens instead

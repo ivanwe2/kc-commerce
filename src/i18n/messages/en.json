@@ -56,7 +56,9 @@
     "saleSection": "On sale",
     "viewAllSales": "View all offers",
     "recentlyViewed": "Recently viewed",
-    "frequentlyBought": "Frequently bought together"
+    "frequentlyBought": "Frequently bought together",
+    "newArrivals": "New arrivals",
+    "recommended": "Recommended for you"
   },
   "units": {
     "piece": "pcs",
@@ -163,7 +165,6 @@
     "priceRange": "Price range",
     "minPrice": "From",
     "maxPrice": "To",
-    "inStockOnly": "In stock only",
     "sort": "Sort by",
     "sortNewest": "Newest",
     "sortPriceAsc": "Price: low to high",
@@ -171,8 +172,13 @@
     "sortNameAsc": "Name: A-Z",
     "apply": "Apply",
     "reset": "Reset filters",
-    "onSaleFilter": "On sale only",
-    "brand": "Brands"
+    "onSaleFilter": "On sale",
+    "brand": "Brands",
+    "showOnly": "Show only",
+    "featuredFilter": "Recommended",
+    "inStockFilter": "In stock",
+    "sortOldest": "Oldest",
+    "sortNameDesc": "Name: Z-A"
   },
   "errors": {
     "notFoundTitle": "Page not found",

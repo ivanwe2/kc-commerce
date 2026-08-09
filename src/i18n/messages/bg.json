@@ -56,7 +56,9 @@
     "saleSection": "Промоции",
     "viewAllSales": "Виж всички промоции",
     "recentlyViewed": "Наскоро разгледани",
-    "frequentlyBought": "Често купувани заедно"
+    "frequentlyBought": "Често купувани заедно",
+    "newArrivals": "Нови продукти",
+    "recommended": "Препоръчани за вас"
   },
   "units": {
     "piece": "бр.",
@@ -163,7 +165,6 @@
     "priceRange": "Ценови диапазон",
     "minPrice": "От",
     "maxPrice": "До",
-    "inStockOnly": "Само налични",
     "sort": "Подреди по",
     "sortNewest": "Най-нови",
     "sortPriceAsc": "Цена: ниска към висока",
@@ -171,8 +172,13 @@
     "sortNameAsc": "Име: А-Я",
     "apply": "Приложи",
     "reset": "Изчисти филтрите",
-    "onSaleFilter": "Само промоции",
-    "brand": "Марки"
+    "onSaleFilter": "Промоции",
+    "brand": "Марки",
+    "showOnly": "Покажи само",
+    "featuredFilter": "Препоръчани",
+    "inStockFilter": "В наличност",
+    "sortOldest": "Най-стари",
+    "sortNameDesc": "Име: Я-А"
   },
   "errors": {
     "notFoundTitle": "Страницата не е намерена",
