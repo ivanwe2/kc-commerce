@@ -7,7 +7,7 @@ import { renderPackingSlip, renderPickList } from '@/lib/fulfilment'
 /**
  * Warehouse paperwork. STAFF ONLY.
  *
- *   /api/fulfilment?type=packing-slip&order=KC-2026-00001
+ *   /api/fulfilment?type=packing-slip&order=BD-2026-00001
  *   /api/fulfilment?type=pick-list&status=confirmed
  *
  * Same authorisation as invoices: a Payload session belonging to the `users`

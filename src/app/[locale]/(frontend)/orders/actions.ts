@@ -4,6 +4,7 @@ import config from '@payload-config'
 import { getPayload } from 'payload'
 import { z } from 'zod'
 
+import { ORDER_NUMBER_PATTERN } from '@/lib/counters'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 
 /**
@@ -14,7 +15,7 @@ import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
  * guest checkout with no way to check status generates support email.
  *
  * SECURITY: the order number alone is not sufficient. Numbers are sequential —
- * KC-2026-00001 tells you KC-2026-00002 exists — so knowing one would let
+ * BD-2026-00001 tells you BD-2026-00002 exists — so knowing one would let
  * anyone walk the whole order book and read names, phone numbers and addresses.
  * Requiring the matching email turns a guessable identifier into a pair that
  * has to be known together.
@@ -24,7 +25,7 @@ const lookupSchema = z.object({
   orderNumber: z
     .string()
     .trim()
-    .regex(/^KC-\d{4}-\d{5}$/, { message: 'fieldRequired' }),
+    .regex(ORDER_NUMBER_PATTERN, { message: 'fieldRequired' }),
   email: z.email({ message: 'invalidEmail' }),
 })
 

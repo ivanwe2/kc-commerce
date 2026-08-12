@@ -1,8 +1,8 @@
-# KC Trading — Agentic Development Master Plan
+# Битодом — Agentic Development Master Plan
 
 ## Project Overview
 
-**KC Trading** is a Bulgarian e-commerce store selling miscellaneous items in both retail and bulk quantities, with tiered pricing that rewards larger orders. The store targets Bulgarian and English-speaking customers, operates under EU/Bulgarian legal requirements, and uses Cash on Delivery via Econt/Speedy as its sole payment method at launch.
+**Битодом** (bitodom.com) is a Bulgarian e-commerce store selling miscellaneous items in both retail and bulk quantities, with tiered pricing that rewards larger orders. The store targets Bulgarian and English-speaking customers, operates under EU/Bulgarian legal requirements, and uses Cash on Delivery via Econt/Speedy as its sole payment method at launch.
 
 **Development method:** Agentic — Claude Code (Opus 5). Every phase below is structured as atomic commits with explicit instructions the agent can execute sequentially.
 
@@ -77,7 +77,7 @@ Roughly a **4× cost reduction** versus the v1 Vercel Pro + Neon plan, with zero
                         └────────────┬─────────────┘
                                      │
    ┌─────────────────────────────────▼──────────────────────────────┐
-   │  Worker: kc-commerce  (Next.js compiled by OpenNext)           │
+   │  Worker: bitodom        (Next.js compiled by OpenNext)           │
    │                                                                │
    │  ┌────────────┐  ┌──────────────────────────┐                  │
    │  │ Storefront │  │   Payload CMS Admin      │   ┌────────────┐ │
@@ -227,7 +227,7 @@ Rules that keep us inside the budget:
 
 ### Design Philosophy
 
-KC Trading is a general merchandise store — it sells things like cleaning supplies, tools, bulk stationery, and household goods. The design must communicate **trust**, **clarity**, and **efficiency**. Customers are here to find products, see prices, and place orders quickly. The design should never compete with the products for attention.
+Битодом is a general merchandise store — it sells things like cleaning supplies, tools, bulk stationery, and household goods. The design must communicate **trust**, **clarity**, and **efficiency**. Customers are here to find products, see prices, and place orders quickly. The design should never compete with the products for attention.
 
 Reference stores for visual direction: Emag.bg (Bulgarian e-commerce leader), Metro Cash & Carry (wholesale), Amazon (functional clarity). Not: Apple, Dribbble showcases, or design-award sites.
 
@@ -494,7 +494,7 @@ Categories
 └── isActive (boolean)
 
 Orders
-├── orderNumber (auto-generated, e.g. KC-2026-00001)
+├── orderNumber (auto-generated, e.g. BD-2026-00001)
 ├── status (enum: pending → confirmed → shipped → delivered → cancelled → returned)
 ├── customer (group)
 │   ├── firstName
@@ -629,7 +629,7 @@ Settings (Payload global)
 
 ### 1. GDPR Compliance
 - **Privacy Policy page** (localized BG + EN) covering:
-  - Identity of the data controller (KC Trading business details)
+  - Identity of the data controller (Битодом business details)
   - Types of personal data collected (name, email, phone, address, order history)
   - Legal basis for processing (contract performance for orders, consent for marketing)
   - Data retention periods (order data: 5 years for tax; marketing consent: until withdrawn)
@@ -1108,7 +1108,7 @@ Create src/collections/Orders.ts
 This is the most complex collection. Key details:
 
 - orderNumber: text field, unique, NOT editable after creation
-  Generate in a beforeValidate hook: "KC-" + year + "-" + zero-padded sequence
+  Generate in a beforeValidate hook: "BD-" + year + "-" + zero-padded sequence
 
   CONCURRENCY: SQLite has no sequences, and read-then-write in JS races.
   Use a dedicated `counters` table and one atomic statement:
@@ -1468,7 +1468,7 @@ Create src/components/LanguageSwitcher.tsx:
    - Contact info
    - Social links
    - Legal links: Terms, Privacy, Cookies, Withdrawal
-   - "© 2026 KC Trading" with company registration info
+   - "© 2026 Битодом" with company registration info
    - Payment info: "Наложен платеж / Cash on Delivery"
 
    src/components/layout/AnnouncementBar.tsx
@@ -1655,7 +1655,7 @@ This is a critical page — must be well-designed and informative.
        "price": "...",
        "priceCurrency": "EUR",
        "availability": "https://schema.org/InStock",
-       "seller": { "@type": "Organization", "name": "KC Trading" }
+       "seller": { "@type": "Organization", "name": "Битодом" }
      }
    }
 ```
@@ -1993,7 +1993,7 @@ SECURITY NOTES:
 ```
 Create src/app/[locale]/(frontend)/checkout/confirmation/page.tsx
 
-- Receives orderNumber via searchParams: /checkout/confirmation?order=KC-2026-00001
+- Receives orderNumber via searchParams: /checkout/confirmation?order=BD-2026-00001
 - Displays:
   - Success icon/animation (checkmark)
   - "Thank you for your order!" (localized)
@@ -2025,10 +2025,10 @@ pnpm add @react-email/components
 
 Create src/emails/OrderConfirmation.tsx:
 - Clean, branded HTML email
-- Subject: "KC Trading — Потвърждение на поръчка #KC-2026-00001"
+- Subject: "Битодом — Потвърждение на поръчка #BD-2026-00001"
   (use the order's locale for subject/content language)
 - Content:
-  - KC Trading logo
+  - Битодом logo
   - "Благодарим за вашата поръчка!" / "Thank you for your order!"
   - Order number
   - Items table (product, qty, price)
@@ -2040,7 +2040,7 @@ Create src/emails/OrderConfirmation.tsx:
   - Unsubscribe link (if marketing consent given)
 
 Create src/emails/OrderShipped.tsx:
-- Subject: "KC Trading — Вашата поръчка е изпратена"
+- Subject: "Битодом — Вашата поръчка е изпратена"
 - Content:
   - Order number
   - Tracking number
@@ -2279,7 +2279,7 @@ Improve the pricing tiers UI in the Products collection admin:
 ```
 1. Dynamic metadata for all pages:
    Use Next.js generateMetadata in each page:
-   - Title: "Page Name | KC Trading" (localized)
+   - Title: "Page Name | Битодом" (localized)
    - Description: Localized, relevant to content
    - Open Graph: title, description, image, url, locale
    - Twitter Card: summary_large_image

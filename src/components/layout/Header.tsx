@@ -24,12 +24,17 @@ export async function Header({ locale }: { locale: StorefrontLocale }) {
   return (
     <header className="sticky top-0 z-40 border-b border-border-default bg-background">
       <div className="container-page flex h-[--header-height] items-center gap-4">
-        <MobileNav links={links} label={nav('openMenu')} closeLabel={nav('closeMenu')}>
+        <MobileNav
+          links={links}
+          label={nav('openMenu')}
+          closeLabel={nav('closeMenu')}
+          siteName={settings.siteName ?? 'Битодом'}
+        >
           <Menu className="size-5" aria-hidden="true" />
         </MobileNav>
 
         <Link href="/" className="text-lg font-bold text-heading">
-          {settings.siteName ?? 'KC Trading'}
+          {settings.siteName ?? 'Битодом'}
         </Link>
 
         <nav aria-label="Main" className="hidden md:flex md:items-center md:gap-6">

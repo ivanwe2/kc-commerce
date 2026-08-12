@@ -131,13 +131,7 @@ jobs:
         env:
           PAYLOAD_SECRET: ci-build-only-secret-not-used-for-signing
           NEXT_PUBLIC_SITE_URL: https://example.com
-        run: |
-          SIZE=$(find .open-next/server-functions -name '*.js' -exec cat {} + | gzip -c | wc -c)
-          MB=$(echo "scale=2; $SIZE/1048576" | bc)
-          echo "Worker bundle: ${MB} MB gzipped (Cloudflare limit: 10 MB)"
-          # Fail below the real limit so there is room to react before a deploy
-          # is actually blocked.
-          if [ "$SIZE" -gt 9437184 ]; then
-            echo "::error::Bundle exceeds the 9 MB warning threshold — approaching Cloudflare's 10 MB hard limit."
-            exit 1
-          fi
+        # Measures what wrangler would actually upload, rather than sizing files
+        # on disk. See scripts/bundle-size.mjs for why the two obvious
+        # alternatives are both wrong.
+        run: node scripts/bundle-size.mjs

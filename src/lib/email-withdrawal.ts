@@ -51,7 +51,7 @@ export async function sendWithdrawalNotice(data: {
   // of a withdrawal without undue delay.
   await send(
     data.customerEmail,
-    `KC Trading — ${data.orderNumber}`,
+    `Битодом — ${data.orderNumber}`,
     `<p>Получихме вашето заявление за отказ от поръчка <strong>${escapeHtml(data.orderNumber)}</strong>.</p>
      <p>We have received your withdrawal request for order <strong>${escapeHtml(data.orderNumber)}</strong>.</p>
      <p>Ще се свържем с вас относно връщането на стоката и възстановяването на сумата.<br>

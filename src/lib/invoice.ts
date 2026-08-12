@@ -153,7 +153,7 @@ export function renderInvoiceHtml({ order, settings, locale }: InvoiceData): str
   <div class="parties">
     <div class="party">
       <h2>${t.supplier}</h2>
-      <strong>${escapeHtml(settings.companyName ?? 'KC Trading')}</strong><br>
+      <strong>${escapeHtml(settings.companyName ?? 'Битодом')}</strong><br>
       ${settings.registrationNumber ? `${t.uic}: ${escapeHtml(settings.registrationNumber)}<br>` : ''}
       ${settings.vatNumber ? `${t.vat}: ${escapeHtml(settings.vatNumber)}<br>` : ''}
       ${settings.registeredAddress ? `${escapeHtml(settings.registeredAddress)}<br>` : ''}

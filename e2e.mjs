@@ -208,7 +208,7 @@ await page.getByRole('button', { name: /Поръчай/ }).click()
 await page.waitForURL('**/confirmation**', { timeout: 25000 }).catch(() => {})
 
 const placed = page.url().includes('confirmation')
-const orderNumber = placed ? (await page.locator('text=/KC-\\d{4}-\\d{5}/').first().textContent())?.trim() : null
+const orderNumber = placed ? (await page.locator('text=/BD-\\d{4}-\\d{5}/').first().textContent())?.trim() : null
 check('ORDER PLACED END TO END', placed, orderNumber ?? (await text()).slice(0, 80))
 await page.screenshot({ path: `${SHOTS}/50-e2e-confirmation.png`, fullPage: true })
 
@@ -218,7 +218,7 @@ check('Cart cleared after order', (await text()).includes('празна'))
 // ─────────────────────────────────────────────── 8. Order tracking
 section('Order tracking')
 await goto('/orders')
-await page.fill('#lookup-order', orderNumber ?? 'KC-2026-00001')
+await page.fill('#lookup-order', orderNumber ?? 'BD-2026-00001')
 await page.fill('#lookup-email', 'maria.ivanova@example.com')
 await page.getByRole('button', { name: /Провери/ }).click()
 await page.waitForTimeout(2000)
@@ -226,7 +226,7 @@ check('Order lookup with correct email', (await text()).includes(orderNumber ?? 
 await page.screenshot({ path: `${SHOTS}/51-e2e-order-tracking.png`, fullPage: true })
 
 await goto('/orders')
-await page.fill('#lookup-order', orderNumber ?? 'KC-2026-00001')
+await page.fill('#lookup-order', orderNumber ?? 'BD-2026-00001')
 await page.fill('#lookup-email', 'attacker@example.com')
 await page.getByRole('button', { name: /Провери/ }).click()
 await page.waitForTimeout(2000)
@@ -262,7 +262,7 @@ check('X-Content-Type-Options nosniff', h['x-content-type-options'] === 'nosniff
 check('Referrer-Policy set', Boolean(h['referrer-policy']))
 const adminRes = await page.request.get(B + '/admin')
 check('Admin exempt from storefront CSP', !adminRes.headers()['content-security-policy'])
-const invoiceRes = await page.request.get(`${B}/api/invoice/${orderNumber ?? 'KC-2026-00001'}`)
+const invoiceRes = await page.request.get(`${B}/api/invoice/${orderNumber ?? 'BD-2026-00001'}`)
 check('Invoice requires staff auth', invoiceRes.status() === 401, `${invoiceRes.status()}`)
 const exportRes = await page.request.get(`${B}/api/export/products`)
 check('CSV export requires staff auth', exportRes.status() === 401, `${exportRes.status()}`)

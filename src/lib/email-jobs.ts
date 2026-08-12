@@ -79,7 +79,7 @@ export async function sendLowStockDigest(
 
   await send(
     adminEmail,
-    `[KC Trading] ${products.length} products low on stock`,
+    `[Битодом] ${products.length} products low on stock`,
     `<h2>Low stock</h2>
      <table style="border-collapse:collapse;font-family:system-ui,sans-serif;font-size:14px;">
        <thead><tr>

@@ -1,7 +1,7 @@
 {
-  "name": "kc-commerce",
+  "name": "bitodom",
   "version": "2.0.0",
-  "description": "KC Trading — Bulgarian e-commerce store on Cloudflare Workers",
+  "description": "Битодом — Bulgarian e-commerce store on Cloudflare Workers",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -22,7 +22,7 @@
     "generate:types:payload": "cross-env NODE_OPTIONS=--no-deprecation payload generate:types",
     "generate:importmap": "cross-env NODE_OPTIONS=--no-deprecation payload generate:importmap",
     "preview": "rm -rf .next .open-next && opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "bundle:check": "rm -rf .next .open-next && opennextjs-cloudflare build && node -e \"const{statSync}=require('fs');const b=statSync('.open-next/worker.js').size;console.log('worker.js',(b/1048576).toFixed(2)+'MB (uncompressed; limit is 10MB gzipped)')\"",
+    "bundle:check": "rm -rf .next .open-next && opennextjs-cloudflare build && node scripts/bundle-size.mjs",
     "deploy:database": "cross-env NODE_ENV=production PAYLOAD_SECRET=ignore payload migrate",
     "deploy:app": "rm -rf .next .open-next && opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "deploy": "pnpm deploy:database && pnpm deploy:app",

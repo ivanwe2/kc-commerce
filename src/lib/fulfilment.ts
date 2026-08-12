@@ -61,7 +61,7 @@ export function renderPackingSlip(order: Order, settings: Setting): string {
 <title>Packing slip ${escapeHtml(order.orderNumber)}</title>
 <style>${SHARED_STYLES}</style></head>
 <body>
-  <h1>${escapeHtml(settings.companyName ?? 'KC Trading')}</h1>
+  <h1>${escapeHtml(settings.companyName ?? 'Битодом')}</h1>
   <div class="meta">
     Товарителница / Packing slip &nbsp;·&nbsp; <strong>${escapeHtml(order.orderNumber)}</strong>
     &nbsp;·&nbsp; ${new Date(order.createdAt).toLocaleDateString('bg-BG')}
@@ -135,7 +135,7 @@ export function renderPickList(orders: Order[], settings: Setting): string {
 <title>Pick list</title>
 <style>${SHARED_STYLES}</style></head>
 <body>
-  <h1>${escapeHtml(settings.companyName ?? 'KC Trading')}</h1>
+  <h1>${escapeHtml(settings.companyName ?? 'Битодом')}</h1>
   <div class="meta">
     Лист за комплектоване / Pick list &nbsp;·&nbsp;
     ${orders.length} поръчки &nbsp;·&nbsp; ${new Date().toLocaleString('bg-BG')}

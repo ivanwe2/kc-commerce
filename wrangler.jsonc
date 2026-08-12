@@ -3,7 +3,7 @@
   // A wrapper around OpenNext's generated worker that adds `scheduled` and
   // `queue` handlers. See worker.js for why it exists.
   "main": "worker.js",
-  "name": "kc-commerce",
+  "name": "bitodom",
   "compatibility_date": "2026-08-06",
   "compatibility_flags": [
     // Node.js API surface — Payload requires it.
@@ -21,14 +21,14 @@
   },
 
   // --- Database -------------------------------------------------------------
-  // `database_id` is a placeholder until someone runs `wrangler d1 create kc-commerce`.
+  // `database_id` is a placeholder until someone runs `wrangler d1 create bitodom`.
   // Local development does NOT need a real id: Miniflare keys the local SQLite
   // file off `database_name`. Do not let a placeholder id here make you think
   // local dev is broken — it is not.
   "d1_databases": [
     {
       "binding": "D1",
-      "database_name": "kc-commerce",
+      "database_name": "bitodom",
       "database_id": "REPLACE_WITH_ID_FROM_WRANGLER_D1_CREATE",
       "remote": true,
     },
@@ -40,25 +40,28 @@
   "r2_buckets": [
     {
       "binding": "R2",
-      "bucket_name": "kc-commerce-media",
+      "bucket_name": "bitodom-media",
     },
     // Persists rendered pages for ISR. Without this binding, `revalidate` on
     // every storefront page silently degrades to fully dynamic rendering.
-    // Create with: wrangler r2 bucket create kc-commerce-cache
+    // Create with: wrangler r2 bucket create bitodom-cache
     {
       "binding": "NEXT_INC_CACHE_R2_BUCKET",
-      "bucket_name": "kc-commerce-cache",
+      "bucket_name": "bitodom-cache",
     },
   ],
 
   // --- Public, non-secret configuration ------------------------------------
   // Secrets NEVER go here — this file is committed. Use `wrangler secret put`.
   "vars": {
-    "NEXT_PUBLIC_SITE_URL": "https://kc-commerce.workers.dev",
+    "NEXT_PUBLIC_SITE_URL": "https://bitodom.com",
     "NEXT_PUBLIC_DEFAULT_LOCALE": "bg",
     "NEXT_PUBLIC_SUPPORTED_LOCALES": "bg,en",
-    // Cloudflare Image Transformations require a zone. They do not work on
-    // workers.dev, so this stays "false" until a custom domain is attached.
+    // Cloudflare Image Transformations require a zone, which bitodom.com now
+    // provides — but the feature still has to be switched on per zone under
+    // Images -> Transformations. Flipping this to "true" beforehand is the one
+    // change that actually breaks images, because /cdn-cgi/image 404s on a zone
+    // without the feature. Enable it in the dashboard first, then flip this.
     "NEXT_PUBLIC_CF_IMAGES": "false",
   },
 
@@ -91,7 +94,7 @@
    * pointing at a queue that has not been created fails the deploy outright. To
    * enable async work:
    *
-   *   wrangler queues create kc-commerce-jobs
+   *   wrangler queues create bitodom-jobs
    *
    * then uncomment both blocks below and implement the message handler at
    * src/app/(payload)/api/queue/route.ts.
@@ -100,8 +103,8 @@
    * within a Worker's CPU budget for any realistic file size.
    */
   // "queues": {
-  //   "producers": [{ "binding": "JOB_QUEUE", "queue": "kc-commerce-jobs" }],
-  //   "consumers": [{ "queue": "kc-commerce-jobs", "max_batch_size": 10, "max_retries": 3 }],
+  //   "producers": [{ "binding": "JOB_QUEUE", "queue": "bitodom-jobs" }],
+  //   "consumers": [{ "queue": "bitodom-jobs", "max_batch_size": 10, "max_retries": 3 }],
   // },
 
   "observability": {
@@ -113,11 +116,11 @@
   // Separate database and bucket: staging must never touch production data.
   "env": {
     "staging": {
-      "name": "kc-commerce-staging",
+      "name": "bitodom-staging",
       "d1_databases": [
         {
           "binding": "D1",
-          "database_name": "kc-commerce-staging",
+          "database_name": "bitodom-staging",
           "database_id": "REPLACE_WITH_STAGING_ID",
           "remote": true,
         },
@@ -125,15 +128,18 @@
       "r2_buckets": [
         {
           "binding": "R2",
-          "bucket_name": "kc-commerce-media-staging",
+          "bucket_name": "bitodom-media-staging",
         },
         {
           "binding": "NEXT_INC_CACHE_R2_BUCKET",
-          "bucket_name": "kc-commerce-cache-staging",
+          "bucket_name": "bitodom-cache-staging",
         },
       ],
       "vars": {
-        "NEXT_PUBLIC_SITE_URL": "https://kc-commerce-staging.workers.dev",
+        // A subdomain of the real zone rather than *.workers.dev, so staging
+        // exercises the same TLS, caching and image-transformation behaviour
+        // production will. Add it under Domains & Routes when staging is set up.
+        "NEXT_PUBLIC_SITE_URL": "https://staging.bitodom.com",
         "NEXT_PUBLIC_DEFAULT_LOCALE": "bg",
         "NEXT_PUBLIC_SUPPORTED_LOCALES": "bg,en",
         "NEXT_PUBLIC_CF_IMAGES": "false",

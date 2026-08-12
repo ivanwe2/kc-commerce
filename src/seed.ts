@@ -49,7 +49,7 @@ const BRANDS = [
 
 const PRODUCTS = [
   {
-    sku: 'KC-CLN-001',
+    sku: 'BD-CLN-001',
     brand: 'sano',
     category: 'cleaning',
     basePrice: 4.5,
@@ -65,7 +65,7 @@ const PRODUCTS = [
     en: { title: 'Universal cleaner 1L', short: 'Concentrate for all surfaces' },
   },
   {
-    sku: 'KC-CLN-002',
+    sku: 'BD-CLN-002',
     brand: 'sano',
     category: 'cleaning',
     basePrice: 12.9,
@@ -80,7 +80,7 @@ const PRODUCTS = [
     en: { title: 'Microfibre cloths, box of 50', short: 'Withstand repeated washing' },
   },
   {
-    sku: 'KC-STA-001',
+    sku: 'BD-STA-001',
     brand: 'maped',
     category: 'stationery',
     basePrice: 8.2,
@@ -95,7 +95,7 @@ const PRODUCTS = [
     en: { title: 'Copy paper A4, 500 sheets', short: '80 g/m², class B' },
   },
   {
-    sku: 'KC-STA-002',
+    sku: 'BD-STA-002',
     brand: 'maped',
     category: 'stationery',
     basePrice: 1.4,
@@ -107,7 +107,7 @@ const PRODUCTS = [
     en: { title: 'Ballpoint pen blue, 0.7mm', short: 'Smooth writing, long life' },
   },
   {
-    sku: 'KC-TLS-001',
+    sku: 'BD-TLS-001',
     brand: 'bosch',
     category: 'tools',
     basePrice: 34.9,
@@ -122,7 +122,7 @@ const PRODUCTS = [
     en: { title: 'Screwdriver set, 12 pieces', short: 'Chrome vanadium steel' },
   },
   {
-    sku: 'KC-HOU-001',
+    sku: 'BD-HOU-001',
     brand: 'sano',
     category: 'household',
     basePrice: 6.75,
@@ -265,7 +265,7 @@ async function seed() {
    */
   const cleaner = await payload.find({
     collection: 'products',
-    where: { sku: { equals: 'KC-CLN-001' } },
+    where: { sku: { equals: 'BD-CLN-001' } },
     limit: 1,
     depth: 0,
   })
@@ -310,12 +310,12 @@ async function seed() {
     slug: 'settings',
     locale: 'bg',
     data: {
-      siteName: 'KC Trading',
+      siteName: 'Битодом',
       heroHeading: 'Качествени стоки на едро и дребно',
       heroSubheading: 'Доставка с Еконт и Спиди в цялата страна. Плащане при получаване.',
       // Placeholders — the real values must come from the stakeholder before
       // launch. They are legally required on every page.
-      companyName: 'КС Трейдинг ЕООД',
+      companyName: 'Битодом ЕООД',
       registrationNumber: '000000000',
       registeredAddress: 'гр. София, ул. Примерна 1',
     },
@@ -325,6 +325,7 @@ async function seed() {
     slug: 'settings',
     locale: 'en',
     data: {
+      siteName: 'Bitodom',
       heroHeading: 'Quality goods, retail and wholesale',
       heroSubheading: 'Delivered nationwide by Econt and Speedy. Pay on delivery.',
       registeredAddress: 'Sofia, 1 Primerna St.',

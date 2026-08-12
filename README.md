@@ -1,4 +1,4 @@
-# KC Trading
+# Битодом
 
 Bulgarian e-commerce store — retail and bulk, tiered pricing, Cash on Delivery
 via Econt/Speedy. Bilingual (BG/EN).

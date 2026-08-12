@@ -1,9 +1,13 @@
 # Deployment runbook
 
-Everything in the codebase is ready. This is the sequence of things only you can
-do, because they need a Cloudflare account and a domain.
+**Domain: `bitodom.com`.** All Cloudflare resources are named `bitodom`.
 
-Times are rough. The whole thing is about 45 minutes, most of it waiting for DNS.
+Everything in the codebase is ready. This is the sequence of things only you can
+do, because they need a Cloudflare account.
+
+**Already done:** the domain is bought and its nameservers already point at
+Cloudflare (`rita.ns.cloudflare.com` / `troy.ns.cloudflare.com`), so the zone is
+active. That removes the slowest step — waiting for DNS to propagate.
 
 ---
 
@@ -14,19 +18,20 @@ Do these in order. Each step is verifiable before you move on.
 | # | Step | Time | Blocking? |
 |---|---|---|---|
 | 0 | Cloudflare account + **Workers Paid ($5/mo)** | 5 min | **Yes — nothing deploys without it** |
-| 1 | Buy a domain (Cloudflare Registrar is simplest) | 10 min | No, but needed for §4-5 |
+| ~~1~~ | ~~Buy a domain~~ — done, `bitodom.com` is on Cloudflare NS | — | Done |
 | 2 | `wrangler d1 create` + 2 × `r2 bucket create` | 5 min | **Yes** |
-| 3 | `wrangler secret put` × 4 | 3 min | **Yes** |
+| 3 | `wrangler secret put` × 6 | 4 min | **Yes** |
 | 4 | `pnpm deploy`, then create the admin user **immediately** | 5 min | **Yes** |
 | 5 | Fill in Settings → Company (legal details) | 5 min | **Yes, before launch** |
-| 6 | Attach the custom domain | 15 min | Before launch |
+| 6 | Attach `bitodom.com` to the Worker | 5 min | Before launch |
 | 7 | Enable Image Transformations, flip `NEXT_PUBLIC_CF_IMAGES` | 2 min | No |
 | 8 | Cache Rules | 5 min | No |
 | 9 | WAF, Bot Fight Mode | 5 min | Before launch |
 | 10 | Resend domain + DNS records | 10 min | Before launch |
-| 11 | Wire up deploys (§8) | 5 min | No |
+| 11 | Turnstile widget keys (§7b) | 3 min | Before launch |
+| 12 | Wire up deploys (§8) | 5 min | No |
 
-Roughly **45 minutes of work**, plus DNS propagation.
+Roughly **40 minutes of work**.
 
 Two things only you can supply, and both block launch: your **real company
 details** (UIC/Bulstat, registered address) and a **lawyer's review of the legal
@@ -41,26 +46,10 @@ You need:
 - A Cloudflare account
 - **Workers Paid ($5/month) — this is mandatory, not optional.** The free tier
   caps a Worker at 3 MB compressed; Payload's admin panel alone exceeds it. Our
-  bundle is ~5.7 MB against the paid 10 MB limit.
-- A domain (can be bought through Cloudflare or transferred in)
+  bundle is ~6.8 MB against the paid 10 MB limit.
 - A Resend account for order emails
 
----
-
-## 0b. Buy a domain (~10 min)
-
-Any registrar works, but **Cloudflare Registrar** is the least friction: the
-domain lands in the same account, nameservers are already correct, DNS is
-instant, and it sells at cost with no markup or renewal surprise.
-
-`.bg` domains cannot be registered through Cloudflare — they need a Bulgarian
-registrar (register.bg and others). If you take that route, buy the domain
-there, then add the site to Cloudflare and change the nameservers at the
-registrar to the two Cloudflare gives you. Everything downstream is identical.
-
-You can complete steps 1-3 and deploy to `*.workers.dev` before the domain
-exists. The domain is only needed for the custom domain, image transformations
-and email.
+The domain is already sorted — see the note at the top.
 
 ---
 
@@ -70,16 +59,16 @@ and email.
 pnpm exec wrangler login
 
 # Database
-pnpm exec wrangler d1 create kc-commerce
+pnpm exec wrangler d1 create bitodom
 # → copy the printed database_id
 
 # Media bucket
-pnpm exec wrangler r2 bucket create kc-commerce-media
+pnpm exec wrangler r2 bucket create bitodom-media
 
 # ISR cache bucket — REQUIRED. Without it, every page marked `revalidate`
 # silently degrades to fully dynamic rendering: correct, but slow and metered
 # as though nothing were cached.
-pnpm exec wrangler r2 bucket create kc-commerce-cache
+pnpm exec wrangler r2 bucket create bitodom-cache
 ```
 
 Paste the returned `database_id` into `wrangler.jsonc`, replacing
@@ -89,12 +78,14 @@ secret.
 **Optional but recommended — a staging environment:**
 
 ```bash
-pnpm exec wrangler d1 create kc-commerce-staging
-pnpm exec wrangler r2 bucket create kc-commerce-media-staging
-pnpm exec wrangler r2 bucket create kc-commerce-cache-staging
+pnpm exec wrangler d1 create bitodom-staging
+pnpm exec wrangler r2 bucket create bitodom-media-staging
+pnpm exec wrangler r2 bucket create bitodom-cache-staging
 ```
 
-and paste that id into the `env.staging` block.
+and paste that id into the `env.staging` block. Staging is configured to run at
+`staging.bitodom.com` rather than a `*.workers.dev` URL, so it exercises the
+same TLS, caching and image-transformation behaviour production will.
 
 ---
 
@@ -108,9 +99,11 @@ openssl rand -hex 32
 pnpm exec wrangler secret put PAYLOAD_SECRET
 
 pnpm exec wrangler secret put RESEND_API_KEY
-pnpm exec wrangler secret put RESEND_FROM_EMAIL      # e.g. orders@kctrading.bg
+pnpm exec wrangler secret put RESEND_FROM_EMAIL      # orders@bitodom.com
 pnpm exec wrangler secret put ORDER_NOTIFICATION_EMAIL  # where withdrawals and
                                                         # contact messages go
+pnpm exec wrangler secret put CRON_SECRET            # openssl rand -hex 32
+pnpm exec wrangler secret put TURNSTILE_SECRET_KEY   # see §9b
 ```
 
 Repeat with `--env staging` for the staging Worker.
@@ -118,6 +111,11 @@ Repeat with `--env staging` for the staging Worker.
 > Until `RESEND_API_KEY` exists, email is **skipped with a warning rather than
 > failing**. Orders still complete. Nothing breaks; customers just don't get a
 > confirmation email yet.
+
+> `TURNSTILE_SECRET_KEY` behaves the same way — with no key set, bot protection
+> **fails open** and the forms work unprotected. That is deliberate: the
+> withdrawal form is legally required to function, so a missing key must never
+> be able to take it offline.
 
 ---
 
@@ -132,7 +130,7 @@ Worker. Order matters — the schema must never be behind the code.
 
 Then **immediately**:
 
-1. Visit `https://kc-commerce.<your-subdomain>.workers.dev/admin`
+1. Visit `https://bitodom.<your-subdomain>.workers.dev/admin`
 2. Create the first admin user
 
 Do this straight away. Until an admin exists, Payload's create-first-user route
@@ -148,19 +146,23 @@ it has to.
 
 ---
 
-## 4. Custom domain (~15 min, mostly DNS propagation)
+## 4. Custom domain (~5 min)
 
-1. Add the domain to Cloudflare (change nameservers at your registrar).
-2. Workers → `kc-commerce` → **Settings → Domains & Routes** → add
-   `kctrading.bg` and `www.kctrading.bg`.
+The nameservers already point at Cloudflare, so this is just wiring.
+
+1. ~~Add the domain to Cloudflare~~ — already done, the zone is active.
+2. Workers → `bitodom` → **Settings → Domains & Routes** → add
+   `bitodom.com` and `www.bitodom.com`.
 3. **SSL/TLS → Overview → Full (strict)**.
 4. **SSL/TLS → Edge Certificates** → enable *Always Use HTTPS*.
    Leave HSTS **off at the zone level** — the app already sends it, and two
    sources with different `max-age` values is a genuinely confusing failure.
-5. Attach a custom domain to the R2 bucket for media (e.g. `media.kctrading.bg`)
-   so images are not served through the Worker.
-6. Update `NEXT_PUBLIC_SITE_URL` in `wrangler.jsonc` to the real domain and
-   redeploy. Sitemap, canonical URLs and hreflang all derive from it.
+5. Attach a custom domain to the R2 media bucket (`media.bitodom.com`) so images
+   are not served through the Worker.
+6. `NEXT_PUBLIC_SITE_URL` in `wrangler.jsonc` is **already set** to
+   `https://bitodom.com`. Sitemap, canonical URLs and hreflang derive from it,
+   so it is correct from the first deploy — but until step 2 is done, that URL
+   does not resolve. Deploy, attach the domain, then verify `/sitemap.xml`.
 
 ---
 
@@ -226,11 +228,33 @@ costs you Worker invocations.
 
 ## 7. Email deliverability (~10 min + DNS)
 
-In Resend: add `kctrading.bg` as a sending domain and add the SPF, DKIM and
-DMARC records it gives you to the Cloudflare DNS for the same zone.
+In Resend: add `bitodom.com` as a sending domain and add the SPF, DKIM and
+DMARC records it gives you to the Cloudflare DNS for the same zone. Because the
+zone is already on Cloudflare, you can paste those records straight in and they
+resolve immediately.
 
 Skipping this does not stop mail sending — it makes it land in spam, which for
 order confirmations is effectively the same as not sending it.
+
+---
+
+## 7b. Turnstile keys (~3 min)
+
+Cloudflare dashboard → **Turnstile → Add widget**:
+
+- Domains: `bitodom.com` (add `localhost` too if you want the real widget in dev)
+- Mode: **Managed**
+
+It gives you a site key and a secret key:
+
+| Where | Value |
+|---|---|
+| `wrangler.jsonc` → `vars.NEXT_PUBLIC_TURNSTILE_SITE_KEY` | site key — public, safe to commit |
+| `wrangler secret put TURNSTILE_SECRET_KEY` | secret key — never commit |
+
+Both halves are needed. With only one set, protection stays **off** rather than
+half-on. Cloudflare's always-passing test keys are documented in
+`.dev.vars.example` for local work.
 
 ---
 

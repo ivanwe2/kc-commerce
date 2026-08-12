@@ -21,7 +21,7 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
 # Optional until Phase 5 (transactional email)
 RESEND_API_KEY=
-RESEND_FROM_EMAIL=orders@kctrading.bg
+RESEND_FROM_EMAIL=orders@bitodom.com
 ORDER_NOTIFICATION_EMAIL=
 
 # Optional. Authorises Payload's job queue endpoint.

@@ -43,8 +43,8 @@ export async function generateMetadata({
   return {
     metadataBase: new URL(base),
     title: {
-      default: 'KC Trading',
-      template: '%s | KC Trading',
+      default: 'Битодом',
+      template: '%s | Битодом',
     },
     description: t('searchPlaceholder'),
     /**
@@ -61,7 +61,7 @@ export async function generateMetadata({
       },
     },
     openGraph: {
-      siteName: 'KC Trading',
+      siteName: 'Битодом',
       locale: locale === 'bg' ? 'bg_BG' : 'en_GB',
       type: 'website',
     },

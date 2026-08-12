@@ -162,7 +162,7 @@ export default buildConfig({
     },
     importMap: { baseDir: path.resolve(dirname) },
     meta: {
-      titleSuffix: '— KC Trading',
+      titleSuffix: '— Битодом',
     },
   },
 
