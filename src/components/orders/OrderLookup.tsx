@@ -58,7 +58,7 @@ export function OrderLookup() {
               id="lookup-order"
               name="orderNumber"
               required
-              placeholder="KC-2026-00001"
+              placeholder="BD-2026-00001"
               className={inputClass}
             />
           </div>

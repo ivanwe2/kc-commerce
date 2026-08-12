@@ -38,7 +38,7 @@ export async function Footer({ locale }: { locale: StorefrontLocale }) {
     <footer className="mt-auto border-t border-border-default bg-surface">
       <div className="container-page grid gap-8 py-12 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <h2 className="text-sm font-semibold text-heading">{settings.siteName ?? 'KC Trading'}</h2>
+          <h2 className="text-sm font-semibold text-heading">{settings.siteName ?? 'Битодом'}</h2>
           <p className="mt-2 text-sm text-body">{t('searchPlaceholder')}</p>
         </div>
 
@@ -118,7 +118,7 @@ export async function Footer({ locale }: { locale: StorefrontLocale }) {
       <div className="border-t border-border-default">
         <div className="container-page flex flex-col gap-2 py-4 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
           <p>
-            © {new Date().getFullYear()} {company.name ?? 'KC Trading'}
+            © {new Date().getFullYear()} {company.name ?? 'Битодом'}
           </p>
           <p>{t('checkout')}: Наложен платеж / Cash on Delivery</p>
         </div>

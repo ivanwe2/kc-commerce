@@ -4,6 +4,7 @@ import config from '@payload-config'
 import { getPayload } from 'payload'
 import { z } from 'zod'
 
+import { ORDER_NUMBER_PATTERN } from '@/lib/counters'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { verifyTurnstile } from '@/lib/turnstile'
 
@@ -22,7 +23,7 @@ const withdrawalSchema = z.object({
   orderNumber: z
     .string()
     .trim()
-    .regex(/^KC-\d{4}-\d{5}$/, { message: 'fieldRequired' }),
+    .regex(ORDER_NUMBER_PATTERN, { message: 'fieldRequired' }),
   firstName: z.string().trim().min(2).max(50),
   lastName: z.string().trim().min(2).max(50),
   email: z.email({ message: 'invalidEmail' }),

@@ -27,7 +27,7 @@ export const Settings: GlobalConfig = {
         {
           label: 'General',
           fields: [
-            { name: 'siteName', type: 'text', localized: true, defaultValue: 'KC Trading' },
+            { name: 'siteName', type: 'text', localized: true, defaultValue: 'Битодом' },
             { name: 'logo', type: 'upload', relationTo: 'media' },
             {
               name: 'heroHeading',

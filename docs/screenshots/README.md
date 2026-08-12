@@ -20,7 +20,7 @@ been uploaded yet, which is why image areas render as light placeholders.
 | `13-checkout` | Checkout form and order summary |
 | `14-checkout-filled` | Completed form |
 | `15-checkout-validation` | Server-side validation error |
-| `16-order-confirmation` | Confirmation for order KC-2026-00001 |
+| `16-order-confirmation` | Confirmation for order BD-2026-00001 |
 | `17-legal-withdrawal` | Withdrawal page with the EU-mandated electronic form |
 | `18-contact` | Contact page |
 | `19-mobile-homepage`, `20-mobile-nav`, `21-mobile-product` | 375px viewport |

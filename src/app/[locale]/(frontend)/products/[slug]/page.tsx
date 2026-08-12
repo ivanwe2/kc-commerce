@@ -105,7 +105,7 @@ export default async function ProductPage({
       price: unitPrice.toFixed(2),
       priceCurrency: 'EUR',
       availability: stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-      seller: { '@type': 'Organization', name: 'KC Trading' },
+      seller: { '@type': 'Organization', name: 'Битодом' },
     },
   }
 

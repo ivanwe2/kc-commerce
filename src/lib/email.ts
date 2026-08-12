@@ -86,8 +86,9 @@ function escapeHtml(value: string): string {
 
 const COPY = {
   bg: {
-    confirmSubject: (orderNumber: string) => `KC Trading — Потвърждение на поръчка ${orderNumber}`,
-    shippedSubject: (orderNumber: string) => `KC Trading — Поръчка ${orderNumber} е изпратена`,
+    brand: 'Битодом',
+    confirmSubject: (orderNumber: string) => `Битодом — Потвърждение на поръчка ${orderNumber}`,
+    shippedSubject: (orderNumber: string) => `Битодом — Поръчка ${orderNumber} е изпратена`,
     greeting: (name: string) => `Здравейте, ${name}!`,
     thanks: 'Благодарим за вашата поръчка.',
     orderNumber: 'Номер на поръчка',
@@ -107,8 +108,9 @@ const COPY = {
     amountDue: 'Сума за плащане при доставка',
   },
   en: {
-    confirmSubject: (orderNumber: string) => `KC Trading — Order confirmation ${orderNumber}`,
-    shippedSubject: (orderNumber: string) => `KC Trading — Order ${orderNumber} has shipped`,
+    brand: 'Bitodom',
+    confirmSubject: (orderNumber: string) => `Bitodom — Order confirmation ${orderNumber}`,
+    shippedSubject: (orderNumber: string) => `Bitodom — Order ${orderNumber} has shipped`,
     greeting: (name: string) => `Hello ${name},`,
     thanks: 'Thank you for your order.',
     orderNumber: 'Order number',
@@ -133,12 +135,12 @@ function copyFor(locale: string) {
   return locale === 'en' ? COPY.en : COPY.bg
 }
 
-function layout(inner: string): string {
+function layout(inner: string, brand: string): string {
   // Inline styles only — email clients discard <style> blocks unpredictably.
   return `<!doctype html>
 <html><body style="margin:0;padding:24px;background:#f8fafc;font-family:system-ui,-apple-system,sans-serif;color:#334155;">
   <div style="max-width:600px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:24px;">
-    <h1 style="margin:0 0 16px;font-size:20px;color:#0f172a;">KC Trading</h1>
+    <h1 style="margin:0 0 16px;font-size:20px;color:#0f172a;">${escapeHtml(brand)}</h1>
     ${inner}
   </div>
 </body></html>`
@@ -191,7 +193,7 @@ export async function sendOrderConfirmation(data: OrderEmailData): Promise<void>
     </table>
     <p style="margin:16px 0 0;font-size:14px;">${t.payment}</p>
     <p style="margin:16px 0 0;font-size:12px;color:#94a3b8;">${t.withdrawal}</p>
-  `)
+  `, t.brand)
 
   await send({ to: data.email, subject: t.confirmSubject(data.orderNumber), html })
 }
@@ -217,7 +219,7 @@ export async function sendOrderShipped(data: {
       <tr><td style="padding:8px 0;font-weight:700;color:#0f172a;">${t.amountDue}</td><td style="padding:8px 0;text-align:right;font-weight:700;color:#0f172a;">${formatPrice(data.total, data.locale)}</td></tr>
     </table>
     <p style="margin:16px 0 0;font-size:12px;color:#94a3b8;">${t.withdrawal}</p>
-  `)
+  `, t.brand)
 
   await send({ to: data.email, subject: t.shippedSubject(data.orderNumber), html })
 }

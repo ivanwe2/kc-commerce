@@ -9,6 +9,7 @@ import * as migration_20260807_200329_growth from './20260807_200329_growth';
 import * as migration_20260808_110135_stock_restored from './20260808_110135_stock_restored';
 import * as migration_20260808_111444_stock_ledger from './20260808_111444_stock_ledger';
 import * as migration_20260808_112754_returns from './20260808_112754_returns';
+import * as migration_20260812_205815_rebrand_bitodom from './20260812_205815_rebrand_bitodom';
 
 export const migrations = [
   {
@@ -64,6 +65,11 @@ export const migrations = [
   {
     up: migration_20260808_112754_returns.up,
     down: migration_20260808_112754_returns.down,
-    name: '20260808_112754_returns'
+    name: '20260808_112754_returns',
+  },
+  {
+    up: migration_20260812_205815_rebrand_bitodom.up,
+    down: migration_20260812_205815_rebrand_bitodom.down,
+    name: '20260812_205815_rebrand_bitodom'
   },
 ];

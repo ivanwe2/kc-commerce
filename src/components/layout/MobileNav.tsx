@@ -16,11 +16,16 @@ export function MobileNav({
   links,
   label,
   closeLabel,
+  siteName,
   children,
 }: {
   links: { href: string; label: string }[]
   label: string
   closeLabel: string
+  // Passed down rather than read here: this is a Client Component, and the
+  // header already has Settings loaded. A second hardcoded copy of the brand
+  // is exactly how a rebrand ends up half-applied.
+  siteName: string
   children: React.ReactNode
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
@@ -58,7 +63,7 @@ export function MobileNav({
       >
         <div className="flex h-full flex-col">
           <div className="flex h-[--header-height] items-center justify-between border-b border-border-default px-4">
-            <span className="font-semibold text-heading">KC Trading</span>
+            <span className="font-semibold text-heading">{siteName}</span>
             <button
               type="button"
               aria-label={closeLabel}

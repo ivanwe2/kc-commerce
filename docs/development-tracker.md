@@ -1,4 +1,4 @@
-# KC Trading — Development Tracker
+# Битодом — Development Tracker
 
 Single source of truth for what is actually built. Updated at the end of every phase.
 

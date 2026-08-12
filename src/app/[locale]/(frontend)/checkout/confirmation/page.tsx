@@ -5,6 +5,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server'
 
 import { buttonVariants } from '@/components/ui/Button'
 import { Link } from '@/i18n/routing'
+import { ORDER_NUMBER_PATTERN } from '@/lib/counters'
 
 export const metadata: Metadata = {
   // A confirmation page must never be indexed — it would leak order numbers
@@ -26,7 +27,7 @@ export default async function ConfirmationPage({
   const raw = Array.isArray(query.order) ? query.order[0] : query.order
 
   // Shape-check the order number rather than rendering whatever is in the URL.
-  const orderNumber = raw && /^KC-\d{4}-\d{5}$/.test(raw) ? raw : null
+  const orderNumber = raw && ORDER_NUMBER_PATTERN.test(raw) ? raw : null
   if (!orderNumber) redirect('/')
 
   const t = await getTranslations('confirmation')

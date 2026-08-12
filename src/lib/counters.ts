@@ -49,11 +49,30 @@ export async function nextCounterValue(key: string): Promise<number> {
 
 /**
  * Format a claimed sequence number as a customer-facing order number.
- * Keyed per year so numbering restarts each January: KC-2026-00001
+ * Keyed per year so numbering restarts each January: BD-2026-00001
+ *
+ * The prefix is deliberately a constant rather than a Settings field. Order
+ * numbers are how customers and couriers refer to an order for years after it
+ * ships; making the prefix editable would let a later rebrand silently split
+ * the sequence into two formats, and order lookup matches on the whole string.
  */
 export function formatOrderNumber(year: number, sequence: number): string {
-  return `KC-${year}-${String(sequence).padStart(5, '0')}`
+  return `BD-${year}-${String(sequence).padStart(5, '0')}`
 }
+
+/**
+ * Matches a customer-facing order number.
+ *
+ * Lives here, beside the formatter it has to agree with. Three independent
+ * copies of this pattern previously sat in the confirmation page, order lookup
+ * and the withdrawal form — so changing the prefix in `formatOrderNumber` left
+ * all three silently rejecting every real order number as malformed, with the
+ * customer told only that the field was invalid.
+ *
+ * Deliberately no `g` flag: a global regex carries `lastIndex` between
+ * `.test()` calls and would fail every second check.
+ */
+export const ORDER_NUMBER_PATTERN = /^BD-\d{4}-\d{5}$/
 
 /** The counter key for a given year. */
 export function orderCounterKey(year: number): string {

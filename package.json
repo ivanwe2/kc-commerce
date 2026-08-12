@@ -1,7 +1,7 @@
 {
-  "name": "kc-commerce",
+  "name": "bitodom",
   "version": "2.0.0",
-  "description": "KC Trading — Bulgarian e-commerce store on Cloudflare Workers",
+  "description": "Битодом — Bulgarian e-commerce store on Cloudflare Workers",
   "license": "MIT",
   "type": "module",
   "scripts": {
