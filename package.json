@@ -23,7 +23,7 @@
     "generate:importmap": "cross-env NODE_OPTIONS=--no-deprecation payload generate:importmap",
     "preview": "rm -rf .next .open-next && opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "bundle:check": "rm -rf .next .open-next && opennextjs-cloudflare build && node scripts/bundle-size.mjs",
-    "deploy:database": "cross-env NODE_ENV=production PAYLOAD_SECRET=ignore payload migrate",
+    "deploy:database": "cross-env NODE_ENV=production CLOUDFLARE_REMOTE=true PAYLOAD_SECRET=ignore payload migrate",
     "deploy:app": "rm -rf .next .open-next && opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "deploy": "pnpm deploy:database && pnpm deploy:app",
     "seed": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed.ts"
