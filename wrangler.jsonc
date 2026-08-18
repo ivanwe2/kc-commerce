@@ -21,10 +21,12 @@
   },
 
   // --- Database -------------------------------------------------------------
-  // `database_id` is a placeholder until someone runs `wrangler d1 create bitodom`.
-  // Local development does NOT need a real id: Miniflare keys the local SQLite
-  // file off `database_name`. Do not let a placeholder id here make you think
-  // local dev is broken — it is not.
+  // Miniflare keys its local SQLite file off `database_id`, NOT `database_name`.
+  // Changing the id therefore points local development at a brand new, EMPTY
+  // database — the previous local data is not gone, it is simply no longer the
+  // one being read. The symptom is "no such table: pages" from a command that
+  // worked five minutes earlier. Run `pnpm migrate` (and `pnpm seed`) after any
+  // change to this value.
   "d1_databases": [
     {
       "binding": "D1",
@@ -84,8 +86,9 @@
       "*/15 * * * *",
       // Low-stock digest, before the shop opens.
       "0 7 * * *",
-      // Housekeeping, Sunday night, when nobody is shopping.
-      "0 3 * * 0",
+      // Housekeeping, Sunday night, when nobody is shopping. Day-of-week is
+      // 1-7 or MON-SUN here; "0" for Sunday is rejected as an invalid cron.
+      "0 3 * * SUN",
     ],
   },
 
@@ -108,6 +111,25 @@
   //   "producers": [{ "binding": "JOB_QUEUE", "queue": "bitodom-jobs" }],
   //   "consumers": [{ "queue": "bitodom-jobs", "max_batch_size": 10, "max_retries": 3 }],
   // },
+
+  /**
+   * Custom domains.
+   *
+   * Declared here rather than clicked in the dashboard so the binding is
+   * versioned with the code that depends on it: NEXT_PUBLIC_SITE_URL, the
+   * sitemap, canonical URLs, hreflang and the Turnstile hostname allowlist all
+   * assume this exact hostname, and a domain attached by hand leaves no trace
+   * in the repository when one of them later disagrees.
+   *
+   * `custom_domain` (not a plain route) makes Cloudflare create the DNS record
+   * and issue the certificate. Both apex and www are attached so a visitor
+   * typing either reaches the shop; the app emits canonical URLs and hreflang
+   * pointing at the apex, so search engines do not treat www as a duplicate.
+   */
+  "routes": [
+    { "pattern": "bitodom.com", "custom_domain": true },
+    { "pattern": "www.bitodom.com", "custom_domain": true },
+  ],
 
   "observability": {
     "enabled": true,
