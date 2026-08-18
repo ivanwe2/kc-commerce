@@ -44,7 +44,7 @@ export async function submitWithdrawal(input: unknown): Promise<WithdrawalResult
 
   const ip = await getClientIp()
 
-  const turnstile = await verifyTurnstile(data.turnstileToken, ip)
+  const turnstile = await verifyTurnstile(data.turnstileToken, { ip, action: 'withdrawal' })
   if (!turnstile.ok) return { success: false, error: 'botCheckFailed' }
 
   const limit = await checkRateLimit({ identifier: ip, action: 'withdrawal', limit: 10 })

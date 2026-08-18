@@ -57,12 +57,14 @@
     "NEXT_PUBLIC_SITE_URL": "https://bitodom.com",
     "NEXT_PUBLIC_DEFAULT_LOCALE": "bg",
     "NEXT_PUBLIC_SUPPORTED_LOCALES": "bg,en",
-    // Cloudflare Image Transformations require a zone, which bitodom.com now
-    // provides — but the feature still has to be switched on per zone under
-    // Images -> Transformations. Flipping this to "true" beforehand is the one
-    // change that actually breaks images, because /cdn-cgi/image 404s on a zone
-    // without the feature. Enable it in the dashboard first, then flip this.
-    "NEXT_PUBLIC_CF_IMAGES": "false",
+    // Image Transformations are enabled on the bitodom.com zone, so the loader
+    // resizes through /cdn-cgi/image rather than serving originals untouched.
+    // This must stay "false" for any deployment whose zone lacks the feature —
+    // /cdn-cgi/image 404s there, which breaks every image on the site.
+    "NEXT_PUBLIC_CF_IMAGES": "true",
+    // Public by design: this ships in the page HTML. The matching secret half
+    // lives in `wrangler secret put TURNSTILE_SECRET_KEY`.
+    "NEXT_PUBLIC_TURNSTILE_SITE_KEY": "0x4AAAAAAEUm33HZvrApAqN0",
   },
 
   /**

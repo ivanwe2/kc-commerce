@@ -127,7 +127,7 @@ export function WithdrawalForm() {
         </p>
       )}
 
-      <Turnstile onToken={setTurnstileToken} resetSignal={turnstileNonce} />
+      <Turnstile onToken={setTurnstileToken} action="withdrawal" resetSignal={turnstileNonce} />
 
       <Button type="submit" variant="primary" className="mt-4" disabled={isPending}>
         {isPending ? common('loading') : 'Изпрати / Submit'}

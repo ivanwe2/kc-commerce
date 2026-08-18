@@ -5,9 +5,25 @@
 Everything in the codebase is ready. This is the sequence of things only you can
 do, because they need a Cloudflare account.
 
-**Already done:** the domain is bought and its nameservers already point at
-Cloudflare (`rita.ns.cloudflare.com` / `troy.ns.cloudflare.com`), so the zone is
-active. That removes the slowest step — waiting for DNS to propagate.
+## Provisioned already
+
+These exist on the account and need no further action:
+
+| Resource | Value |
+|---|---|
+| Zone | `bitodom.com`, nameservers `rita` / `troy.ns.cloudflare.com` |
+| Account ID | `ab4f47ab3fa5fe50d48912ee9e2b321b` |
+| D1 database | `bitodom` — `1a7a0318-c711-4b55-b9ec-af50ab85b51e` (EEUR) |
+| R2 buckets | `bitodom-media`, `bitodom-cache` (EEUR) |
+| Schema | all migrations applied to remote D1 |
+| Turnstile widget | sitekey `0x4AAAAAAEUm33HZvrApAqN0`, managed, `bitodom.com` + localhost |
+| Image Transformations | enabled; `NEXT_PUBLIC_CF_IMAGES` is `"true"` |
+| Worker secrets set | `PAYLOAD_SECRET`, `CRON_SECRET`, `RESEND_FROM_EMAIL`, `TURNSTILE_SECRET_KEY` |
+| GitHub Actions | `PAYLOAD_SECRET`, `CLOUDFLARE_ACCOUNT_ID` secrets; `NEXT_PUBLIC_SITE_URL` variable |
+
+**Still outstanding:** `RESEND_API_KEY` and `ORDER_NOTIFICATION_EMAIL` secrets, the
+custom domain binding, and a `CLOUDFLARE_API_TOKEN` for the Actions deploy
+workflow (OAuth credentials do not work in CI).
 
 ---
 

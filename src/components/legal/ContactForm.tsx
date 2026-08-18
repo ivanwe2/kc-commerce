@@ -108,7 +108,7 @@ export function ContactForm() {
         </p>
       )}
 
-      <Turnstile onToken={setTurnstileToken} resetSignal={turnstileNonce} />
+      <Turnstile onToken={setTurnstileToken} action="contact" resetSignal={turnstileNonce} />
 
       <Button type="submit" variant="primary" className="mt-4" disabled={isPending}>
         {isPending ? common('loading') : 'Изпрати / Send'}
