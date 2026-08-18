@@ -27,9 +27,16 @@ declare global {
 
 export function Turnstile({
   onToken,
+  action,
   resetSignal = 0,
 }: {
   onToken: (token: string | null) => void
+  /**
+   * What this token is for, e.g. "contact". The server requires the value it
+   * expects, so a token solved on one form cannot be spent on another.
+   * Cloudflare allows 1-32 characters of letters, numbers, underscore, hyphen.
+   */
+  action: string
   /** Increment to request a fresh token; a Turnstile token is single-use. */
   resetSignal?: number
 }) {
@@ -82,6 +89,7 @@ export function Turnstile({
         ref={containerRef}
         className="cf-turnstile mt-4"
         data-sitekey={siteKey}
+        data-action={action}
         data-callback="__kcTurnstileCallback"
         data-expired-callback="__kcTurnstileExpired"
         data-error-callback="__kcTurnstileError"

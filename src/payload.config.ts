@@ -34,13 +34,28 @@ const isProduction = process.env.NODE_ENV === 'production'
  * Whether to bind against the REAL D1 and R2 rather than Miniflare's local ones.
  *
  * `wrangler.jsonc` marks D1 as `"remote": true` so that `pnpm deploy:database`
- * migrates the live database. But `next build` also runs with NODE_ENV=production,
- * and remote bindings require a Cloudflare API token — so a plain local
- * `pnpm build` would fail with an API-token error despite needing no network at
- * all. Requiring the token to actually be present keeps local builds working
- * offline while CI and deploys, which do set it, still reach production.
+ * migrates the live database. But `next build` also runs with NODE_ENV=production
+ * and needs no network at all, so remote bindings must not be the default —
+ * a plain local `pnpm build` would otherwise fail on missing credentials.
+ *
+ * Two signals enable it, and BOTH are needed because they cover different
+ * operators:
+ *
+ *   - CLOUDFLARE_API_TOKEN — set by CI and the GitHub Actions deploy workflow.
+ *   - CLOUDFLARE_REMOTE — set explicitly by `pnpm deploy:database`, because a
+ *     human running a deploy from their laptop is usually authenticated with
+ *     `wrangler login` (an OAuth token in ~/.config/.wrangler), and there is no
+ *     API token in the environment at all.
+ *
+ * Gating on the token alone was a genuine trap: with only OAuth present,
+ * `payload migrate` fell back to the LOCAL Miniflare database, applied every
+ * migration there, and printed a confident success — while the production D1 it
+ * claimed to have migrated stayed completely empty. The first deploy then served
+ * a shop with no schema.
  */
-const useRemoteBindings = isProduction && Boolean(process.env.CLOUDFLARE_API_TOKEN)
+const useRemoteBindings =
+  isProduction &&
+  (Boolean(process.env.CLOUDFLARE_API_TOKEN) || process.env.CLOUDFLARE_REMOTE === 'true')
 
 /**
  * Workers has no pino transport, and Payload's default logger produces output

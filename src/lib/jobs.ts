@@ -186,6 +186,12 @@ export async function runPriceHistoryPrune(): Promise<JobResult> {
   return { job: 'price-history-prune', summary: `${deleted} rows older than 2 years removed` }
 }
 
+async function runWeeklyMaintenance(): Promise<JobResult> {
+  const counters = await runCounterCleanup()
+  const prices = await runPriceHistoryPrune()
+  return { job: 'weekly-maintenance', summary: `${counters.summary}; ${prices.summary}` }
+}
+
 /** Jobs by schedule, so the cron handler stays declarative. */
 export const SCHEDULED_JOBS: Record<string, () => Promise<JobResult>> = {
   // Every 15 minutes — restock notices should feel prompt.
@@ -193,9 +199,12 @@ export const SCHEDULED_JOBS: Record<string, () => Promise<JobResult>> = {
   // 07:00 UTC daily, before the shop opens.
   '0 7 * * *': runLowStockDigest,
   // 03:00 Sunday — housekeeping, when nobody is shopping.
-  '0 3 * * 0': async () => {
-    const counters = await runCounterCleanup()
-    const prices = await runPriceHistoryPrune()
-    return { job: 'weekly-maintenance', summary: `${counters.summary}; ${prices.summary}` }
-  },
+  //
+  // Registered under both spellings of Sunday. The Worker looks jobs up by the
+  // exact schedule string Cloudflare echoes back in `event.cron`, and the
+  // day-of-week field accepts either 1-7 or MON-SUN — so a wrangler.jsonc
+  // written one way and a registry written the other means the job silently
+  // never runs. (Plain "0" for Sunday is rejected outright by the API.)
+  '0 3 * * SUN': runWeeklyMaintenance,
+  '0 3 * * 7': runWeeklyMaintenance,
 }

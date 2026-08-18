@@ -34,7 +34,7 @@ export async function sendContact(input: unknown): Promise<ContactResult> {
   // Three layers, cheapest first: honeypot (free, above), Turnstile (one
   // network call), then the rate limit (a database write). Ordering them this
   // way means the most expensive check runs least often.
-  const turnstile = await verifyTurnstile(parsed.data.turnstileToken, ip)
+  const turnstile = await verifyTurnstile(parsed.data.turnstileToken, { ip, action: 'contact' })
   if (!turnstile.ok) return { success: false, error: 'botCheckFailed' }
 
   const limit = await checkRateLimit({ identifier: ip, action: 'contact', limit: 5 })
